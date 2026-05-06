@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -31,7 +34,16 @@ use Symfony\Component\Uid\Uuid;
         new GetCollection(),
         new Get(),
     ],
+    order: ['setId' => 'ASC', 'numberInSet' => 'ASC'],
 )]
+#[ApiFilter(SearchFilter::class, properties: [
+    'setId' => 'exact',
+    'language' => 'exact',
+    'variant' => 'exact',
+    'name' => 'ipartial',
+    'numberInSet' => 'ipartial',
+])]
+#[ApiFilter(OrderFilter::class, properties: ['setId', 'numberInSet', 'name'])]
 class Card
 {
     #[ORM\Id]
