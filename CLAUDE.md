@@ -16,6 +16,15 @@ Five canonical triage roles, default label strings (`needs-triage`, `needs-info`
 
 Single-context repo: one `CONTEXT.md` + `docs/adr/` at the root, shared across `api/` and `app/`. See `docs/agents/domain.md`.
 
+## Tooling
+
+Le monorepo utilise **Castor** comme task runner unique. Toute commande (composer, pnpm, docker, bin/console, static analysis, tests…) passe par `castor <task>`. Voir [ADR-0006](docs/adr/0006-tooling-stack-and-ci-workflow.md) pour le détail des choix (Castor vs Make/composer scripts ; Biome vs ESLint+Prettier ; PHPStan max ; etc.).
+
+- **Layout** : `castor.php` racine + `.castor/{api,app,docker,qa,test}.php` (split par domaine, namespace PHP → préfixe `:` au CLI, ex. `castor api:phpstan`).
+- **Contextes** : `dev` (default, `APP_ENV=dev`) et `ci` (`APP_ENV=test`, `CI=true`). En CI : `castor --context=ci <task>`.
+- **Install** : Castor est installé globalement en local (binary `castor` sur le PATH) ; en CI via [`castor-php/setup-castor@v1.0.0`](https://github.com/castor-php/setup-castor). **Pas de dep Composer**.
+- **Convention pour les agents** : toujours invoquer `castor <task>` plutôt que les outils sous-jacents en direct, pour rester cohérent avec la CI.
+
 ## Workflow conventions
 
 - **Branches** : une branche par issue, format `issue/<numero>-<slug>`.
