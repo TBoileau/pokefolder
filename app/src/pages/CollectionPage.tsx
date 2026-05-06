@@ -324,38 +324,44 @@ function CollectionGrid({ entries }: { entries: CollectionEntry[] }) {
     <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
       {entries.map((entry) => (
         <li key={entry.card.id}>
-          <UICard className="h-full overflow-hidden">
-            <div className="relative aspect-[5/7] w-full bg-muted">
-              {entry.card.imageUrl ? (
-                <img
-                  src={tcgdexImageUrl(entry.card.imageUrl, 'high', 'webp')}
-                  alt={entry.card.name}
-                  loading="lazy"
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground text-xs">
-                  no image
-                </div>
-              )}
-              <span className="absolute top-2 right-2 inline-flex min-w-7 items-center justify-center rounded-full bg-primary px-2 py-0.5 font-semibold text-primary-foreground text-xs shadow">
-                ×{entry.totalQuantity}
-              </span>
-            </div>
-            <CardHeader className="gap-1 p-4">
-              <CardTitle className="line-clamp-1">{entry.card.name}</CardTitle>
-              <CardDescription>
-                {entry.card.setId} · #{entry.card.numberInSet}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-1 p-4 pt-0">
-              {Object.entries(entry.byCondition).map(([condition, count]) => (
-                <Tag key={condition}>
-                  {condition} ×{count}
-                </Tag>
-              ))}
-            </CardContent>
-          </UICard>
+          <Link
+            to="/collection/cards/$cardId"
+            params={{ cardId: entry.card.id }}
+            className="block focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          >
+            <UICard className="h-full overflow-hidden transition-shadow hover:shadow-md">
+              <div className="relative aspect-[5/7] w-full bg-muted">
+                {entry.card.imageUrl ? (
+                  <img
+                    src={tcgdexImageUrl(entry.card.imageUrl, 'high', 'webp')}
+                    alt={entry.card.name}
+                    loading="lazy"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground text-xs">
+                    no image
+                  </div>
+                )}
+                <span className="absolute top-2 right-2 inline-flex min-w-7 items-center justify-center rounded-full bg-primary px-2 py-0.5 font-semibold text-primary-foreground text-xs shadow">
+                  ×{entry.totalQuantity}
+                </span>
+              </div>
+              <CardHeader className="gap-1 p-4">
+                <CardTitle className="line-clamp-1">{entry.card.name}</CardTitle>
+                <CardDescription>
+                  {entry.card.setId} · #{entry.card.numberInSet}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-1 p-4 pt-0">
+                {Object.entries(entry.byCondition).map(([condition, count]) => (
+                  <Tag key={condition}>
+                    {condition} ×{count}
+                  </Tag>
+                ))}
+              </CardContent>
+            </UICard>
+          </Link>
         </li>
       ))}
     </ul>

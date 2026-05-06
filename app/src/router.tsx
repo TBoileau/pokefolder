@@ -3,6 +3,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { z } from 'zod'
 
 import { CardsPage } from '@/pages/CardsPage'
+import { CollectionCardPage } from '@/pages/CollectionCardPage'
 import { CollectionPage } from '@/pages/CollectionPage'
 import { HomePage } from '@/pages/HomePage'
 import { SyncPage } from '@/pages/SyncPage'
@@ -67,7 +68,19 @@ const collectionRoute = createRoute({
   validateSearch: collectionSearchSchema,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, cardsRoute, syncRoute, collectionRoute])
+const collectionCardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/collection/cards/$cardId',
+  component: CollectionCardPage,
+})
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  cardsRoute,
+  syncRoute,
+  collectionRoute,
+  collectionCardRoute,
+])
 
 export const router = createRouter({ routeTree })
 
