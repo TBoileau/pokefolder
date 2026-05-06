@@ -2,46 +2,48 @@
 
 declare(strict_types=1);
 
-namespace App\Catalog;
+namespace App\UseCase\Catalog\SyncSet;
 
-use App\Catalog\Provider\TCGdexProvider;
 use App\Entity\Card;
 use App\Repository\CardRepository;
+use App\Service\Catalog\Provider\TCGdexProvider;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
- * Imports a TCGdex set's cards into the local catalogue. Idempotent:
- * re-running for the same set updates existing rows in place rather than
- * creating duplicates. The functional identity is
- * (setId, numberInSet, variant, language).
+ * Imports a single TCGdex set into the local Card catalog. Idempotent:
+ * re-runs update existing rows in place rather than creating duplicates.
  *
- * Each `(card, variant)` returned by TCGdex is fanned out to one row per
- * configured language. A set that is missing in a given language is
- * skipped silently; if it is missing in *every* configured language, a
+ * Each (card, variant) returned by TCGdex is fanned out to one Card row
+ * per configured language; languages where the set is missing are skipped
+ * silently. If the set is missing in *every* configured language, a
  * SetNotFoundException is raised.
+ *
+ * Functional identity: (setId, numberInSet, variant, language).
  */
-final class CatalogSynchronizer
+#[AsMessageHandler]
+final readonly class Handler
 {
     /**
      * @param list<string> $languages ISO 639-1 codes (e.g. ['en', 'fr']).
      */
     public function __construct(
-        private readonly TCGdexProvider $provider,
-        private readonly EntityManagerInterface $em,
-        private readonly CardRepository $cards,
+        private TCGdexProvider $provider,
+        private EntityManagerInterface $em,
+        private CardRepository $cards,
         #[Autowire(param: 'pokefolder.catalog.languages')]
-        private readonly array $languages,
+        private array $languages,
     ) {
     }
 
-    public function syncSet(string $setId): SyncReport
+    public function __invoke(Input $input): Output
     {
-        $report = new SyncReport($setId);
+        $output = new Output($input->setId);
         $foundInAnyLanguage = false;
 
         foreach ($this->languages as $language) {
-            $set = $this->provider->fetchSet($setId, $language);
+            $set = $this->provider->fetchSet($input->setId, $language);
             if ($set === null) {
                 continue;
             }
@@ -50,7 +52,7 @@ final class CatalogSynchronizer
             foreach ($set->cards as $card) {
                 foreach ($card->activeVariants as $variant) {
                     $existing = $this->cards->findByFunctionalIdentity(
-                        $setId,
+                        $input->setId,
                         $card->localId,
                         $variant,
                         $language,
@@ -58,7 +60,7 @@ final class CatalogSynchronizer
 
                     if ($existing === null) {
                         $this->em->persist(new Card(
-                            setId: $setId,
+                            setId: $input->setId,
                             numberInSet: $card->localId,
                             variant: $variant,
                             language: $language,
@@ -66,26 +68,26 @@ final class CatalogSynchronizer
                             rarity: $card->rarity,
                             imageUrl: $card->imageUrl,
                         ));
-                        ++$report->created;
+                        ++$output->created;
 
                         continue;
                     }
 
                     if ($existing->updateCatalogueData($card->name, $card->rarity, $card->imageUrl)) {
-                        ++$report->updated;
+                        ++$output->updated;
                     } else {
-                        ++$report->unchanged;
+                        ++$output->unchanged;
                     }
                 }
             }
         }
 
         if (!$foundInAnyLanguage) {
-            throw new SetNotFoundException($setId);
+            throw new SetNotFoundException($input->setId);
         }
 
         $this->em->flush();
 
-        return $report;
+        return $output;
     }
 }

@@ -5,7 +5,7 @@ framework:
             sync: 'sync://'
 
         routing:
-            App\Message\SyncSetMessage: async
+            App\UseCase\Catalog\SyncSet\Input: async
 
 when@test:
     framework:

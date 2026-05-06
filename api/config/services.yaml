@@ -21,8 +21,8 @@ services:
         resource: '../src/'
 
     # Bind the TCGdex catalog provider to the SDK-backed implementation.
-    App\Catalog\Provider\TCGdexProvider: '@App\Catalog\Provider\SDKTCGdexProvider'
+    App\Service\Catalog\Provider\TCGdexProvider: '@App\Service\Catalog\Provider\SDKTCGdexProvider'
 
     # TCGdex SDK client built by our factory (so we control its PSR slots).
     TCGdex\TCGdex:
-        factory: ['@App\Catalog\Provider\TCGdexClientFactory', 'create']
+        factory: ['@App\Service\Catalog\Provider\TCGdexClientFactory', 'create']

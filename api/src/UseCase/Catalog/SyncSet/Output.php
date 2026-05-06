@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Catalog;
+namespace App\UseCase\Catalog\SyncSet;
 
-final class SyncReport
+final class Output
 {
     public function __construct(
         public readonly string $setId,

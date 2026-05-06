@@ -22,4 +22,9 @@ Single-context repo: one `CONTEXT.md` + `docs/adr/` at the root, shared across `
 - **Merges** : toujours en **rebase and merge** (`gh pr merge <n> --rebase --delete-branch`), jamais de merge commit ni de squash. Garde un historique linéaire propre.
 - **Commits** : créer de NOUVEAUX commits sur la branche pendant la review plutôt que d'amender (les commits sont visibles dans la PR).
 - **PRs** : la description ferme l'issue via `Closes #<numero>`.
-- **Backend layout** : Symfony conventionnel (`src/Controller/`, `src/Entity/`, `src/Repository/`, `src/Message/`, `src/MessageHandler/`, etc.). Pas de DDD/hexa : on revisitera si la codebase grossit.
+- **Backend layout** : feature-folder + `UseCase/` (voir [ADR-0005](docs/adr/0005-feature-folder-layout.md)).
+  - `src/Command/`, `src/Controller/`, `src/Entity/`, `src/Repository/` : conventionnels Symfony, à la racine.
+  - `src/Service/<Area>/` : utilities réutilisables (DTOs, providers, factories, value objects), groupées par domaine.
+  - `src/UseCase/<Area>/<Verb>/` : opérations métier non triviales — chacune a `Input.php` + `Handler.php` (+ `Output.php` quand le handler retourne un objet riche, + exceptions spécifiques au use case). Le `Handler` est registered via `#[AsMessageHandler]` pour les use cases async.
+  - Critère pour créer un UseCase plutôt que CRUD direct API Platform : multi-aggregate, side effects, invariants non triviaux, async/queue, ou heuristique/logique de query. Sinon CRUD direct via API Platform default operations + Symfony Validator.
+  - Tests miroir la structure prod (`tests/UseCase/<Area>/<Verb>/HandlerTest.php`, `tests/Service/<Area>/...`).
