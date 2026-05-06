@@ -9,17 +9,17 @@ namespace App\Service\Catalog\DTO;
  * variants flattened into the list of identifiers the card is actually
  * available in (e.g. ['normal', 'holo']).
  */
-final class TCGdexCard
+final readonly class TCGdexCard
 {
     /**
      * @param list<string> $activeVariants
      */
     public function __construct(
-        public readonly string $localId,
-        public readonly string $name,
-        public readonly string $rarity,
-        public readonly ?string $imageUrl,
-        public readonly array $activeVariants,
+        public string $localId,
+        public string $name,
+        public string $rarity,
+        public ?string $imageUrl,
+        public array $activeVariants,
     ) {
     }
 }

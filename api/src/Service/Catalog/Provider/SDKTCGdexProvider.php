@@ -9,6 +9,9 @@ use App\Service\Catalog\DTO\TCGdexSet;
 use TCGdex\Model\SubModel\Variants;
 use TCGdex\TCGdex;
 
+use function is_array;
+use function is_string;
+
 /**
  * Production implementation of TCGdexProvider backed by the TCGdex PHP
  * SDK. The TCGdex client is autowired (assembled by TCGdexClientFactory
@@ -16,9 +19,9 @@ use TCGdex\TCGdex;
  * mutable `lang` property — safe in this context because messages are
  * processed sequentially by the worker.
  */
-final class SDKTCGdexProvider implements TCGdexProvider
+final readonly class SDKTCGdexProvider implements TCGdexProvider
 {
-    public function __construct(private readonly TCGdex $tcgdex)
+    public function __construct(private TCGdex $tcgdex)
     {
     }
 
@@ -27,20 +30,18 @@ final class SDKTCGdexProvider implements TCGdexProvider
         $this->tcgdex->lang = $language;
 
         $set = $this->tcgdex->set->get($setId);
-        if ($set === null) {
+        if (null === $set) {
             return null;
         }
 
         $cards = [];
         foreach ($set->cards as $resume) {
             $card = $resume->toCard();
-            if ($card === null) {
+            $variants = $this->extractActiveVariants($card->variants);
+            if ([] === $variants) {
                 continue;
             }
-            $variants = self::extractActiveVariants($card->variants);
-            if ($variants === []) {
-                continue;
-            }
+
             $cards[] = new TCGdexCard(
                 localId: $card->localId,
                 name: $card->name,
@@ -57,9 +58,19 @@ final class SDKTCGdexProvider implements TCGdexProvider
     {
         $this->tcgdex->lang = $language;
 
+        // Hit the raw endpoint rather than $tcgdex->set->list() to sidestep
+        // a PHPStan-unfriendly generic in the SDK's Endpoint docblock
+        // (template name `List` collides with PHPStan's `list` keyword).
+        $response = $this->tcgdex->fetch('sets');
+        if (!is_iterable($response)) {
+            return [];
+        }
+
         $ids = [];
-        foreach ($this->tcgdex->set->list() as $resume) {
-            $ids[] = $resume->id;
+        foreach ($response as $item) {
+            if (is_array($item) && isset($item['id']) && is_string($item['id'])) {
+                $ids[] = $item['id'];
+            }
         }
 
         return $ids;
@@ -68,11 +79,11 @@ final class SDKTCGdexProvider implements TCGdexProvider
     /**
      * @return list<string>
      */
-    private static function extractActiveVariants(Variants $variants): array
+    private function extractActiveVariants(Variants $variants): array
     {
         $active = [];
         foreach (['normal', 'reverse', 'holo', 'firstEdition', 'wPromo'] as $variant) {
-            if ($variants->{$variant} === true) {
+            if (true === $variants->{$variant}) {
                 $active[] = $variant;
             }
         }

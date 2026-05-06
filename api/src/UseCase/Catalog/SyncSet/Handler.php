@@ -30,9 +30,9 @@ final readonly class Handler
      * @param list<string> $languages ISO 639-1 codes (e.g. ['en', 'fr']).
      */
     public function __construct(
-        private TCGdexProvider $provider,
-        private EntityManagerInterface $em,
-        private CardRepository $cards,
+        private TCGdexProvider $tcGdexProvider,
+        private EntityManagerInterface $entityManager,
+        private CardRepository $cardRepository,
         #[Autowire(param: 'pokefolder.catalog.languages')]
         private array $languages,
     ) {
@@ -44,23 +44,24 @@ final readonly class Handler
         $foundInAnyLanguage = false;
 
         foreach ($this->languages as $language) {
-            $set = $this->provider->fetchSet($input->setId, $language);
-            if ($set === null) {
+            $set = $this->tcGdexProvider->fetchSet($input->setId, $language);
+            if (!$set instanceof \App\Service\Catalog\DTO\TCGdexSet) {
                 continue;
             }
+
             $foundInAnyLanguage = true;
 
             foreach ($set->cards as $card) {
                 foreach ($card->activeVariants as $variant) {
-                    $existing = $this->cards->findByFunctionalIdentity(
+                    $existing = $this->cardRepository->findByFunctionalIdentity(
                         $input->setId,
                         $card->localId,
                         $variant,
                         $language,
                     );
 
-                    if ($existing === null) {
-                        $this->em->persist(new Card(
+                    if (!$existing instanceof Card) {
+                        $this->entityManager->persist(new Card(
                             setId: $input->setId,
                             numberInSet: $card->localId,
                             variant: $variant,
@@ -87,7 +88,7 @@ final readonly class Handler
             throw new SetNotFoundException($input->setId);
         }
 
-        $this->em->flush();
+        $this->entityManager->flush();
 
         return $output;
     }

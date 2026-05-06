@@ -17,14 +17,14 @@ final class SyncSetCommandTest extends KernelTestCase
         $kernel = self::bootKernel();
         $application = new Application($kernel);
 
-        $tester = new CommandTester($application->find('pokefolder:sync-set'));
-        $exitCode = $tester->execute(['setId' => 'base1']);
+        $commandTester = new CommandTester($application->find('pokefolder:sync-set'));
+        $exitCode = $commandTester->execute(['setId' => 'base1']);
 
         self::assertSame(0, $exitCode);
-        self::assertStringContainsString('dispatched', $tester->getDisplay());
+        self::assertStringContainsString('dispatched', $commandTester->getDisplay());
 
         /** @var InMemoryTransport $transport */
-        $transport = static::getContainer()->get('messenger.transport.async');
+        $transport = self::getContainer()->get('messenger.transport.async');
         $sent = $transport->getSent();
 
         self::assertCount(1, $sent);

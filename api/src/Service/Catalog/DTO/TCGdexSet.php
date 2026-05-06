@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Service\Catalog\DTO;
 
-final class TCGdexSet
+final readonly class TCGdexSet
 {
     /**
      * @param list<TCGdexCard> $cards
      */
     public function __construct(
-        public readonly string $id,
-        public readonly array $cards,
+        public string $id,
+        public array $cards,
     ) {
     }
 }

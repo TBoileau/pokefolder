@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use App\Repository\CardRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -37,52 +38,31 @@ class Card
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     private Uuid $id;
 
-    #[ORM\Column(name: 'set_id', length: 64)]
-    private string $setId;
-
-    #[ORM\Column(length: 32)]
-    private string $numberInSet;
-
-    #[ORM\Column(length: 64)]
-    private string $variant;
-
-    #[ORM\Column(length: 8)]
-    private string $language;
-
-    #[ORM\Column(length: 255)]
-    private string $name;
-
-    #[ORM\Column(length: 64)]
-    private string $rarity;
-
-    #[ORM\Column(length: 500, nullable: true)]
-    private ?string $imageUrl = null;
+    #[ORM\Column]
+    private DateTimeImmutable $createdAt;
 
     #[ORM\Column]
-    private \DateTimeImmutable $createdAt;
-
-    #[ORM\Column]
-    private \DateTimeImmutable $updatedAt;
+    private DateTimeImmutable $updatedAt;
 
     public function __construct(
-        string $setId,
-        string $numberInSet,
-        string $variant,
-        string $language,
-        string $name,
-        string $rarity,
-        ?string $imageUrl = null,
+        #[ORM\Column(name: 'set_id', length: 64)]
+        private string $setId,
+        #[ORM\Column(length: 32)]
+        private string $numberInSet,
+        #[ORM\Column(length: 64)]
+        private string $variant,
+        #[ORM\Column(length: 8)]
+        private string $language,
+        #[ORM\Column(length: 255)]
+        private string $name,
+        #[ORM\Column(length: 64)]
+        private string $rarity,
+        #[ORM\Column(length: 500, nullable: true)]
+        private ?string $imageUrl = null,
         ?Uuid $id = null,
     ) {
         $this->id = $id ?? Uuid::v7();
-        $this->setId = $setId;
-        $this->numberInSet = $numberInSet;
-        $this->variant = $variant;
-        $this->language = $language;
-        $this->name = $name;
-        $this->rarity = $rarity;
-        $this->imageUrl = $imageUrl;
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $this->createdAt = $now;
         $this->updatedAt = $now;
     }
@@ -90,7 +70,7 @@ class Card
     #[ORM\PreUpdate]
     public function onPreUpdate(): void
     {
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable();
     }
 
     /**
@@ -107,10 +87,12 @@ class Card
             $this->name = $name;
             $changed = true;
         }
+
         if ($this->rarity !== $rarity) {
             $this->rarity = $rarity;
             $changed = true;
         }
+
         if ($this->imageUrl !== $imageUrl) {
             $this->imageUrl = $imageUrl;
             $changed = true;
@@ -159,12 +141,12 @@ class Card
         return $this->imageUrl;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function getUpdatedAt(): \DateTimeImmutable
+    public function getUpdatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
     }

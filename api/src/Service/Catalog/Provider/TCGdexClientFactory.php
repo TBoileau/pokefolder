@@ -20,7 +20,7 @@ use TCGdex\TCGdex;
  * instantiation, then `create()` returns a TCGdex instance the rest of
  * the app can have autowired straight into a constructor.
  */
-final class TCGdexClientFactory
+final readonly class TCGdexClientFactory
 {
     public function __construct(
         ClientInterface $httpClient = new Psr18Client(),
