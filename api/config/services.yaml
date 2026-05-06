@@ -20,6 +20,9 @@ services:
     App\:
         resource: '../src/'
 
-    # Bind the TCGdex catalogue provider to the SDK-backed implementation in
-    # all environments except test (test overrides this in config/packages/test/).
+    # Bind the TCGdex catalog provider to the SDK-backed implementation.
     App\Catalog\Provider\TCGdexProvider: '@App\Catalog\Provider\SDKTCGdexProvider'
+
+    # TCGdex SDK client built by our factory (so we control its PSR slots).
+    TCGdex\TCGdex:
+        factory: ['@App\Catalog\Provider\TCGdexClientFactory', 'create']
