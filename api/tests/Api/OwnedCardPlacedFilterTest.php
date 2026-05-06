@@ -54,6 +54,35 @@ final class OwnedCardPlacedFilterTest extends ApiTestCase
         ]);
     }
 
+    public function testPlacedFalseEmbedsCardImageUrlInResponse(): void
+    {
+        $client = self::createClient();
+        $em = self::getContainer()->get(EntityManagerInterface::class);
+
+        $card = new Card('base1', '7', 'normal', 'en', 'Squirtle', 'Common', 'https://example.test/squirtle');
+        $em->persist($card);
+        $em->persist(new OwnedCard($card, Condition::NearMint));
+        $em->flush();
+
+        $client->request('GET', '/api/owned_cards?placed=false');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertJsonContains([
+            'member' => [
+                [
+                    '@type' => 'OwnedCard',
+                    'card' => [
+                        '@type' => 'Card',
+                        'name' => 'Squirtle',
+                        'imageUrl' => 'https://example.test/squirtle',
+                        'setId' => 'base1',
+                        'numberInSet' => '7',
+                    ],
+                ],
+            ],
+        ]);
+    }
+
     public function testPlacedTrueReturnsOnlyPlacedOwnedCards(): void
     {
         $client = self::createClient();
