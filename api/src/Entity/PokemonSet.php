@@ -1,0 +1,201 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Repository\PokemonSetRepository;
+use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use Doctrine\ORM\Mapping as ORM;
+
+/**
+ * A TCGdex set (e.g. "Base Set", "Sword & Shield Base").
+ * Mapped table is `set` but PHP class is `PokemonSet` to avoid clashing
+ * with reserved SQL keywords / Set the data structure.
+ */
+#[ORM\Entity(repositoryClass: PokemonSetRepository::class)]
+#[ORM\Table(name: 'pokemon_set')]
+class PokemonSet
+{
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $logo = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $symbol = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?DateTimeImmutable $releaseDate = null;
+
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true)]
+    private ?int $cardCountTotal = null;
+
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true)]
+    private ?int $cardCountOfficial = null;
+
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
+    private ?bool $legalStandard = null;
+
+    #[ORM\Column(type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
+    private ?bool $legalExpanded = null;
+
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $tcgOnlineId = null;
+
+    /**
+     * @var Collection<int, PokemonSetTranslation>
+     */
+    #[ORM\OneToMany(targetEntity: PokemonSetTranslation::class, mappedBy: 'pokemonSet', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    private Collection $translations;
+
+    public function __construct(#[ORM\Id]
+        #[ORM\Column(length: 64)]
+        private string $id, #[ORM\ManyToOne(targetEntity: Serie::class)]
+        #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+        private Serie $serie)
+    {
+        $this->translations = new ArrayCollection();
+    }
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+    public function getSerie(): Serie
+    {
+        return $this->serie;
+    }
+
+    public function setSerie(Serie $serie): void
+    {
+        $this->serie = $serie;
+    }
+
+    public function getLogo(): ?string
+    {
+        return $this->logo;
+    }
+
+    public function setLogo(?string $logo): void
+    {
+        $this->logo = $logo;
+    }
+
+    public function getSymbol(): ?string
+    {
+        return $this->symbol;
+    }
+
+    public function setSymbol(?string $symbol): void
+    {
+        $this->symbol = $symbol;
+    }
+
+    public function getReleaseDate(): ?DateTimeImmutable
+    {
+        return $this->releaseDate;
+    }
+
+    public function setReleaseDate(?DateTimeImmutable $releaseDate): void
+    {
+        $this->releaseDate = $releaseDate;
+    }
+
+    public function getCardCountTotal(): ?int
+    {
+        return $this->cardCountTotal;
+    }
+
+    public function setCardCountTotal(?int $count): void
+    {
+        $this->cardCountTotal = $count;
+    }
+
+    public function getCardCountOfficial(): ?int
+    {
+        return $this->cardCountOfficial;
+    }
+
+    public function setCardCountOfficial(?int $count): void
+    {
+        $this->cardCountOfficial = $count;
+    }
+
+    public function getLegalStandard(): ?bool
+    {
+        return $this->legalStandard;
+    }
+
+    public function setLegalStandard(?bool $legal): void
+    {
+        $this->legalStandard = $legal;
+    }
+
+    public function getLegalExpanded(): ?bool
+    {
+        return $this->legalExpanded;
+    }
+
+    public function setLegalExpanded(?bool $legal): void
+    {
+        $this->legalExpanded = $legal;
+    }
+
+    public function getTcgOnlineId(): ?string
+    {
+        return $this->tcgOnlineId;
+    }
+
+    public function setTcgOnlineId(?string $id): void
+    {
+        $this->tcgOnlineId = $id;
+    }
+
+    /**
+     * @return Collection<int, PokemonSetTranslation>
+     */
+    public function getTranslations(): Collection
+    {
+        return $this->translations;
+    }
+
+    public function getTranslation(string $language): ?PokemonSetTranslation
+    {
+        foreach ($this->translations as $translation) {
+            if ($translation->getLanguage() === $language) {
+                return $translation;
+            }
+        }
+
+        return null;
+    }
+
+    public function upsertTranslation(
+        string $language,
+        string $name,
+        ?string $abbreviationOfficial = null,
+        ?string $abbreviationNormal = null,
+    ): PokemonSetTranslation {
+        $translation = $this->getTranslation($language);
+        if ($translation instanceof PokemonSetTranslation) {
+            $translation->setName($name);
+            $translation->setAbbreviationOfficial($abbreviationOfficial);
+            $translation->setAbbreviationNormal($abbreviationNormal);
+
+            return $translation;
+        }
+
+        $translation = new PokemonSetTranslation(
+            $this,
+            $language,
+            $name,
+            $abbreviationOfficial,
+            $abbreviationNormal,
+        );
+        $this->translations->add($translation);
+
+        return $translation;
+    }
+}

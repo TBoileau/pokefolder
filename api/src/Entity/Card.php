@@ -21,13 +21,13 @@ use Symfony\Component\Uid\Uuid;
  * Catalogue entry mirroring a Pokémon TCG card from TCGdex. Read-only from
  * the application's perspective: only updated by the catalogue synchroniser.
  *
- * Functional identity: (setId, numberInSet, variant, language). See CONTEXT.md.
+ * Functional identity: (set, numberInSet, variant, language). See CONTEXT.md.
  */
 #[ORM\Entity(repositoryClass: CardRepository::class)]
 #[ORM\Table(name: 'card')]
 #[ORM\UniqueConstraint(
     name: 'card_functional_identity_uniq',
-    columns: ['set_id', 'number_in_set', 'variant', 'language'],
+    columns: ['pokemon_set_id', 'number_in_set', 'variant', 'language'],
 )]
 #[ORM\HasLifecycleCallbacks]
 #[ApiResource(
@@ -35,21 +35,23 @@ use Symfony\Component\Uid\Uuid;
         new GetCollection(),
         new Get(),
     ],
-    order: ['setId' => 'ASC', 'numberInSet' => 'ASC'],
+    order: ['numberInSet' => 'ASC'],
 )]
 #[ApiFilter(SearchFilter::class, properties: [
-    'setId' => 'exact',
+    'pokemonSet' => 'exact',
+    'pokemonSet.serie' => 'exact',
+    'rarity' => 'exact',
     'language' => 'exact',
     'variant' => 'exact',
     'name' => 'ipartial',
     'numberInSet' => 'ipartial',
 ])]
-#[ApiFilter(OrderFilter::class, properties: ['setId', 'numberInSet', 'name'])]
+#[ApiFilter(OrderFilter::class, properties: ['numberInSet', 'name'])]
 class Card
 {
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
-    #[Groups(['binder_slot:read', 'owned_card:read'])]
+    #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
     private Uuid $id;
 
     #[ORM\Column]
@@ -59,26 +61,28 @@ class Card
     private DateTimeImmutable $updatedAt;
 
     public function __construct(
-        #[ORM\Column(name: 'set_id', length: 64)]
-        #[Groups(['binder_slot:read', 'owned_card:read'])]
-        private string $setId,
+        #[ORM\ManyToOne(targetEntity: PokemonSet::class)]
+        #[ORM\JoinColumn(name: 'pokemon_set_id', nullable: false, onDelete: 'CASCADE')]
+        #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
+        private PokemonSet $pokemonSet,
         #[ORM\Column(length: 32)]
-        #[Groups(['binder_slot:read', 'owned_card:read'])]
+        #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
         private string $numberInSet,
         #[ORM\Column(length: 64)]
-        #[Groups(['binder_slot:read', 'owned_card:read'])]
+        #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
         private string $variant,
         #[ORM\Column(length: 8)]
-        #[Groups(['binder_slot:read', 'owned_card:read'])]
+        #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
         private string $language,
         #[ORM\Column(length: 255)]
-        #[Groups(['binder_slot:read', 'owned_card:read'])]
+        #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
         private string $name,
-        #[ORM\Column(length: 64)]
-        #[Groups(['binder_slot:read', 'owned_card:read'])]
-        private string $rarity,
+        #[ORM\ManyToOne(targetEntity: Rarity::class)]
+        #[ORM\JoinColumn(name: 'rarity_code', referencedColumnName: 'code', nullable: true, onDelete: 'SET NULL')]
+        #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
+        private ?Rarity $rarity = null,
         #[ORM\Column(length: 500, nullable: true)]
-        #[Groups(['binder_slot:read', 'owned_card:read'])]
+        #[Groups(['binder_slot:read', 'owned_card:read', 'card:read'])]
         private ?string $imageUrl = null,
         ?Uuid $id = null,
     ) {
@@ -96,12 +100,12 @@ class Card
 
     /**
      * Propagates upstream catalogue changes onto this row. Functional
-     * identity (setId, numberInSet, variant, language) is intentionally
+     * identity (set, numberInSet, variant, language) is intentionally
      * immutable — only descriptive fields can drift.
      *
      * Returns true if any field actually changed.
      */
-    public function updateCatalogueData(string $name, string $rarity, ?string $imageUrl): bool
+    public function updateCatalogueData(string $name, ?Rarity $rarity, ?string $imageUrl): bool
     {
         $changed = false;
         if ($this->name !== $name) {
@@ -127,9 +131,14 @@ class Card
         return $this->id;
     }
 
+    public function getPokemonSet(): PokemonSet
+    {
+        return $this->pokemonSet;
+    }
+
     public function getSetId(): string
     {
-        return $this->setId;
+        return $this->pokemonSet->getId();
     }
 
     public function getNumberInSet(): string
@@ -152,7 +161,7 @@ class Card
         return $this->name;
     }
 
-    public function getRarity(): string
+    public function getRarity(): ?Rarity
     {
         return $this->rarity;
     }

@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Api;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
-use App\Entity\Card;
 use App\Entity\OwnedCard;
 use App\Enum\Condition;
+use App\Tests\Support\CardFixtureFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -33,13 +33,14 @@ final class OwnedCardTest extends ApiTestCase
         $client = self::createClient();
         $em = self::getContainer()->get(EntityManagerInterface::class);
 
-        $card = new Card(
+        $card = CardFixtureFactory::create(
+            $em,
             setId: 'base1',
             numberInSet: '4',
             variant: 'holo',
             language: 'en',
             name: 'Charizard',
-            rarity: 'Rare Holo',
+            rarityCode: 'rare-holo',
         );
         $em->persist($card);
         $em->flush();
@@ -64,13 +65,14 @@ final class OwnedCardTest extends ApiTestCase
         $client = self::createClient();
         $em = self::getContainer()->get(EntityManagerInterface::class);
 
-        $card = new Card(
+        $card = CardFixtureFactory::create(
+            $em,
             setId: 'base1',
             numberInSet: '4',
             variant: 'holo',
             language: 'en',
             name: 'Charizard',
-            rarity: 'Rare Holo',
+            rarityCode: 'rare-holo',
         );
         $ownedCard = new OwnedCard(card: $card, condition: Condition::NearMint);
         $em->persist($card);
@@ -91,13 +93,14 @@ final class OwnedCardTest extends ApiTestCase
         $client = self::createClient();
         $em = self::getContainer()->get(EntityManagerInterface::class);
 
-        $card = new Card(
+        $card = CardFixtureFactory::create(
+            $em,
             setId: 'base1',
             numberInSet: '4',
             variant: 'holo',
             language: 'en',
             name: 'Charizard',
-            rarity: 'Rare Holo',
+            rarityCode: 'rare-holo',
         );
         $ownedCard = new OwnedCard(card: $card, condition: Condition::NearMint);
         $em->persist($card);

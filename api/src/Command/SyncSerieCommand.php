@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\UseCase\Catalog\SyncCards\Input;
+use App\UseCase\Catalog\SyncSets\Input;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -21,10 +21,10 @@ use function is_string;
 use function sprintf;
 
 #[AsCommand(
-    name: 'app:catalog:sync-set',
-    description: 'Dispatch a targeted TCGdex catalog sync for one set in every configured language.',
+    name: 'app:catalog:sync-serie',
+    description: 'Dispatch a targeted TCGdex catalog sync for one serie in every configured language.',
 )]
-final class SyncSetCommand extends Command
+final class SyncSerieCommand extends Command
 {
     /**
      * @param list<string> $languages
@@ -39,29 +39,29 @@ final class SyncSetCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('setId', InputArgument::REQUIRED, 'TCGdex set identifier (e.g. "base1", "swsh1")');
+        $this->addArgument('serieId', InputArgument::REQUIRED, 'TCGdex serie identifier (e.g. "base", "swsh", "sv")');
         $this->addOption(
             'force',
             null,
             InputOption::VALUE_NONE,
-            'Refetch every card even if already present locally.',
+            'Refetch every set/card even if already present locally.',
         );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $symfonyStyle = new SymfonyStyle($input, $output);
-        $setId = $input->getArgument('setId');
-        assert(is_string($setId));
+        $serieId = $input->getArgument('serieId');
+        assert(is_string($serieId));
         $force = (bool) $input->getOption('force');
 
         foreach ($this->languages as $language) {
-            $this->messageBus->dispatch(new Input($setId, $language, $force));
+            $this->messageBus->dispatch(new Input($serieId, $language, $force));
         }
 
         $symfonyStyle->success(sprintf(
-            'SyncCards dispatched for set "%s" in %d languages (force=%s).',
-            $setId,
+            'SyncSets dispatched for serie "%s" in %d languages (force=%s).',
+            $serieId,
             count($this->languages),
             $force ? 'true' : 'false',
         ));

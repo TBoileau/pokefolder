@@ -7,11 +7,11 @@ namespace App\Tests\Api;
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use App\Entity\Binder;
 use App\Entity\BinderSlot;
-use App\Entity\Card;
 use App\Entity\OwnedCard;
 use App\Enum\BinderSlotFace;
 use App\Enum\Condition;
 use App\Service\Binder\BinderSlotPosition;
+use App\Tests\Support\CardFixtureFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -27,7 +27,7 @@ final class OwnedCardPlacedFilterTest extends ApiTestCase
         $binder = new Binder('Test', 5, 3, 3);
         $em->persist($binder);
 
-        $card = new Card('base1', '1', 'normal', 'en', 'Card 1', 'Common');
+        $card = CardFixtureFactory::create($em, setId: 'base1', numberInSet: '1', variant: 'normal', language: 'en', name: 'Card 1', rarityCode: 'common');
         $em->persist($card);
 
         $placedOwnedCard = new OwnedCard($card, Condition::NearMint);
@@ -59,7 +59,7 @@ final class OwnedCardPlacedFilterTest extends ApiTestCase
         $client = self::createClient();
         $em = self::getContainer()->get(EntityManagerInterface::class);
 
-        $card = new Card('base1', '7', 'normal', 'en', 'Squirtle', 'Common', 'https://example.test/squirtle');
+        $card = CardFixtureFactory::create($em, setId: 'base1', numberInSet: '7', variant: 'normal', language: 'en', name: 'Squirtle', rarityCode: 'common', imageUrl: 'https://example.test/squirtle');
         $em->persist($card);
         $em->persist(new OwnedCard($card, Condition::NearMint));
         $em->flush();
@@ -75,7 +75,6 @@ final class OwnedCardPlacedFilterTest extends ApiTestCase
                         '@type' => 'Card',
                         'name' => 'Squirtle',
                         'imageUrl' => 'https://example.test/squirtle',
-                        'setId' => 'base1',
                         'numberInSet' => '7',
                     ],
                 ],
@@ -91,7 +90,7 @@ final class OwnedCardPlacedFilterTest extends ApiTestCase
         $binder = new Binder('Test', 5, 3, 3);
         $em->persist($binder);
 
-        $card = new Card('base1', '2', 'normal', 'en', 'Card 2', 'Common');
+        $card = CardFixtureFactory::create($em, setId: 'base1', numberInSet: '2', variant: 'normal', language: 'en', name: 'Card 2', rarityCode: 'common');
         $em->persist($card);
 
         $placedOwnedCard = new OwnedCard($card, Condition::NearMint);

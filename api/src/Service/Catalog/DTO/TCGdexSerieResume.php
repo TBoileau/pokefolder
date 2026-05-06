@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Service\Catalog\DTO;
 
-final readonly class TCGdexSet
+final readonly class TCGdexSerieResume
 {
-    /**
-     * @param list<TCGdexCard> $cards
-     */
     public function __construct(
         public string $id,
-        public array $cards,
+        public string $name,
+        public ?string $logo = null,
     ) {
     }
 }
