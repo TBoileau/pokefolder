@@ -15,8 +15,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
-        changeOrigin: false,
+        target: 'https://127.0.0.1:8000',
+        // symfony serve uses a self-signed mkcert certificate — don't reject it.
+        secure: false,
+        // Rewrite the Host header to match the target so TLS SNI / Symfony
+        // routing both see 127.0.0.1:8000 instead of the front origin.
+        changeOrigin: true,
       },
     },
   },
