@@ -93,6 +93,32 @@ class Card
         $this->updatedAt = new \DateTimeImmutable();
     }
 
+    /**
+     * Propagates upstream catalogue changes onto this row. Functional
+     * identity (set, numberInSet, variant, language) is intentionally
+     * immutable — only descriptive fields can drift.
+     *
+     * Returns true if any field actually changed.
+     */
+    public function updateCatalogueData(string $name, string $rarity, ?string $imageUrl): bool
+    {
+        $changed = false;
+        if ($this->name !== $name) {
+            $this->name = $name;
+            $changed = true;
+        }
+        if ($this->rarity !== $rarity) {
+            $this->rarity = $rarity;
+            $changed = true;
+        }
+        if ($this->imageUrl !== $imageUrl) {
+            $this->imageUrl = $imageUrl;
+            $changed = true;
+        }
+
+        return $changed;
+    }
+
     public function getId(): Uuid
     {
         return $this->id;
