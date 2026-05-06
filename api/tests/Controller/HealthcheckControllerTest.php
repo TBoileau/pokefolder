@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Infrastructure\Controller;
+namespace App\Tests\Controller;
 
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use Symfony\Component\HttpFoundation\Response;
