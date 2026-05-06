@@ -52,7 +52,7 @@ class OwnedCard
 {
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
-    #[Groups(['owned_card:read'])]
+    #[Groups(['owned_card:read', 'binder_slot:read'])]
     private Uuid $id;
 
     #[ORM\Column]
@@ -66,11 +66,11 @@ class OwnedCard
     public function __construct(
         #[ORM\ManyToOne(targetEntity: Card::class)]
         #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
-        #[Groups(['owned_card:read', 'owned_card:write'])]
+        #[Groups(['owned_card:read', 'owned_card:write', 'binder_slot:read'])]
         #[Assert\NotNull]
         private Card $card,
         #[ORM\Column(length: 4, enumType: Condition::class)]
-        #[Groups(['owned_card:read', 'owned_card:write'])]
+        #[Groups(['owned_card:read', 'owned_card:write', 'binder_slot:read'])]
         #[Assert\NotNull]
         private Condition $condition,
         ?Uuid $id = null,

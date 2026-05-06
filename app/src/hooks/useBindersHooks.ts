@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetcher } from '@/lib/fetcher'
 import type { HydraCollection } from '@/types/api'
 import type { Binder } from '@/types/binder'
+import type { BinderSlot } from '@/types/binderSlot'
 
 export function useBindersQuery() {
   return useQuery({
@@ -15,6 +16,16 @@ export function useBinderQuery(binderId: string) {
   return useQuery({
     queryKey: ['binders', 'item', binderId],
     queryFn: () => fetcher<Binder>(`/api/binders/${binderId}`),
+  })
+}
+
+export function useBinderSlotsQuery(binderId: string) {
+  return useQuery({
+    queryKey: ['binders', 'slots', binderId],
+    queryFn: () =>
+      fetcher<HydraCollection<BinderSlot>>(
+        `/api/binder_slots?binder=/api/binders/${binderId}&itemsPerPage=500`,
+      ),
   })
 }
 
