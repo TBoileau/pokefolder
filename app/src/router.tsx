@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { CardsPage } from '@/pages/CardsPage'
 import { HomePage } from '@/pages/HomePage'
+import { SyncPage } from '@/pages/SyncPage'
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -40,7 +41,13 @@ const cardsRoute = createRoute({
   validateSearch: cardsSearchSchema,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, cardsRoute])
+const syncRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/sync',
+  component: SyncPage,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, cardsRoute, syncRoute])
 
 export const router = createRouter({ routeTree })
 

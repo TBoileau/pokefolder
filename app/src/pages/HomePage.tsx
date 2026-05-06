@@ -28,6 +28,9 @@ export function HomePage() {
               Parcourir le catalogue
             </Link>
           </Button>
+          <Button asChild variant="outline">
+            <Link to="/sync">Synchroniser TCGdex</Link>
+          </Button>
         </div>
       </main>
     </div>
