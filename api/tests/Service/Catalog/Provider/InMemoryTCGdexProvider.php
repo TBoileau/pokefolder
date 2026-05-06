@@ -29,6 +29,19 @@ final class InMemoryTCGdexProvider implements TCGdexProvider
         return $this->sets[self::key($setId, $language)] ?? null;
     }
 
+    public function listSetIds(string $language): array
+    {
+        $ids = [];
+        $suffix = '|'.$language;
+        foreach (array_keys($this->sets) as $key) {
+            if (str_ends_with($key, $suffix)) {
+                $ids[] = substr($key, 0, -\strlen($suffix));
+            }
+        }
+
+        return $ids;
+    }
+
     private static function key(string $setId, string $language): string
     {
         return $setId.'|'.$language;

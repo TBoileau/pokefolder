@@ -18,4 +18,11 @@ interface TCGdexProvider
      * if the set is not available in that language.
      */
     public function fetchSet(string $setId, string $language): ?TCGdexSet;
+
+    /**
+     * Returns every TCGdex set identifier available in the given language.
+     *
+     * @return list<string>
+     */
+    public function listSetIds(string $language): array;
 }
