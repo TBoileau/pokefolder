@@ -5,8 +5,7 @@ framework:
             sync: 'sync://'
 
         routing:
-            # Route your message classes to the transports here, e.g.:
-            # 'App\Message\YourMessage': async
+            App\Message\SyncSetMessage: async
 
 when@test:
     framework:
