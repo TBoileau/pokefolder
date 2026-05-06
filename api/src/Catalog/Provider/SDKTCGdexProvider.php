@@ -6,41 +6,27 @@ namespace App\Catalog\Provider;
 
 use App\Catalog\DTO\TCGdexCard;
 use App\Catalog\DTO\TCGdexSet;
-use Nyholm\Psr7\Factory\Psr17Factory;
-use Psr\Http\Client\ClientInterface;
-use Psr\Http\Message\RequestFactoryInterface;
-use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\SimpleCache\CacheInterface;
-use Symfony\Component\HttpClient\Psr18Client;
 use TCGdex\Model\SubModel\Variants;
 use TCGdex\TCGdex;
 
 /**
- * Production implementation backed by the TCGdex PHP SDK. Wires the SDK's
- * static PSR slots to Symfony components on first use so the SDK uses our
- * HTTP client, cache and PSR-17 factories instead of its built-in Buzz +
- * in-memory cache.
+ * Production implementation of TCGdexProvider backed by the TCGdex PHP
+ * SDK. The TCGdex client is autowired (assembled by TCGdexClientFactory
+ * declared in services.yaml). Per-call language is set on the SDK's
+ * mutable `lang` property — safe in this context because messages are
+ * processed sequentially by the worker.
  */
 final class SDKTCGdexProvider implements TCGdexProvider
 {
-    public function __construct(
-        ClientInterface $httpClient = new Psr18Client(),
-        CacheInterface $cache = new \Symfony\Component\Cache\Psr16Cache(
-            new \Symfony\Component\Cache\Adapter\ArrayAdapter(),
-        ),
-        RequestFactoryInterface $requestFactory = new Psr17Factory(),
-        ResponseFactoryInterface $responseFactory = new Psr17Factory(),
-    ) {
-        TCGdex::$client = $httpClient;
-        TCGdex::$cache = $cache;
-        TCGdex::$requestFactory = $requestFactory;
-        TCGdex::$responseFactory = $responseFactory;
+    public function __construct(private readonly TCGdex $tcgdex)
+    {
     }
 
     public function fetchSet(string $setId, string $language): ?TCGdexSet
     {
-        $tcgdex = new TCGdex($language);
-        $set = $tcgdex->set->get($setId);
+        $this->tcgdex->lang = $language;
+
+        $set = $this->tcgdex->set->get($setId);
         if ($set === null) {
             return null;
         }
