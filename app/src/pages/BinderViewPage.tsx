@@ -10,8 +10,8 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { Link, useParams } from '@tanstack/react-router'
-import { ArrowLeft, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowLeft, Search, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -36,6 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   PlacementHttpError,
@@ -60,7 +61,13 @@ export function BinderViewPage() {
 
   const binderQuery = useBinderQuery(binderId)
   const slotsQuery = useBinderSlotsQuery(binderId)
-  const freeCardsQuery = useFreeOwnedCardsQuery()
+  const [freeSearchInput, setFreeSearchInput] = useState('')
+  const [freeSearchDebounced, setFreeSearchDebounced] = useState('')
+  useEffect(() => {
+    const id = window.setTimeout(() => setFreeSearchDebounced(freeSearchInput), 250)
+    return () => window.clearTimeout(id)
+  }, [freeSearchInput])
+  const freeCardsQuery = useFreeOwnedCardsQuery(freeSearchDebounced)
   const placeCard = usePlaceCardMutation(binderId)
   const moveCard = useMoveCardMutation(binderId)
   const unplaceCard = useUnplaceCardMutation(binderId)
@@ -237,6 +244,8 @@ export function BinderViewPage() {
               cards={freeCards}
               isLoading={freeCardsQuery.isLoading}
               isError={freeCardsQuery.isError}
+              searchInput={freeSearchInput}
+              onSearchChange={setFreeSearchInput}
             />
           </div>
         )}
@@ -535,10 +544,14 @@ function FreeCardsPanel({
   cards,
   isLoading,
   isError,
+  searchInput,
+  onSearchChange,
 }: {
   cards: OwnedCard[]
   isLoading: boolean
   isError: boolean
+  searchInput: string
+  onSearchChange: (value: string) => void
 }) {
   return (
     <UICard className="h-fit lg:sticky lg:top-6">
@@ -548,6 +561,16 @@ function FreeCardsPanel({
           Glisse une carte vers un slot vide pour la placer. {cards.length} carte
           {cards.length > 1 ? 's' : ''} libre{cards.length > 1 ? 's' : ''}.
         </CardDescription>
+        <div className="relative pt-2">
+          <Search className="absolute top-4 left-2.5 size-4 text-muted-foreground" />
+          <Input
+            value={searchInput}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Rechercher (nom, numéro, set, série…)"
+            className="pl-8"
+            aria-label="Rechercher dans les cartes libres"
+          />
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

@@ -34,6 +34,11 @@ services:
         tags:
             - { name: 'api_platform.doctrine.orm.query_extension.collection' }
 
+    # Custom collection extension: adds ?search=foo on Card and OwnedCard.
+    App\Api\Doctrine\CardSearchExtension:
+        tags:
+            - { name: 'api_platform.doctrine.orm.query_extension.collection' }
+
     # TCGdex SDK client built by our factory (so we control its PSR slots).
     TCGdex\TCGdex:
         factory: ['@App\Service\Catalog\Provider\TCGdexClientFactory', 'create']

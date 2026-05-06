@@ -12,12 +12,14 @@ export function useCardQuery(cardId: string) {
   })
 }
 
-export function useFreeOwnedCardsQuery() {
+export function useFreeOwnedCardsQuery(search: string = '') {
+  const trimmed = search.trim()
+  const suffix = trimmed === '' ? '' : `&search=${encodeURIComponent(trimmed)}`
   return useQuery({
-    queryKey: ['owned-cards', { placed: false }],
+    queryKey: ['owned-cards', { placed: false, search: trimmed }],
     queryFn: () =>
       fetcher<HydraCollection<OwnedCard>>(
-        `/api/owned_cards?placed=false&itemsPerPage=200&order%5BcreatedAt%5D=DESC`,
+        `/api/owned_cards?placed=false&itemsPerPage=200&order%5BcreatedAt%5D=DESC${suffix}`,
       ),
   })
 }
