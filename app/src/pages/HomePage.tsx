@@ -28,6 +28,11 @@ export function HomePage() {
               Parcourir le catalogue
             </Link>
           </Button>
+          <Button asChild variant="secondary">
+            <Link to="/collection" search={{ page: 1 }}>
+              Ma collection
+            </Link>
+          </Button>
           <Button asChild variant="outline">
             <Link to="/sync">Synchroniser TCGdex</Link>
           </Button>

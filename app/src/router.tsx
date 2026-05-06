@@ -3,6 +3,7 @@ import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { z } from 'zod'
 
 import { CardsPage } from '@/pages/CardsPage'
+import { CollectionPage } from '@/pages/CollectionPage'
 import { HomePage } from '@/pages/HomePage'
 import { SyncPage } from '@/pages/SyncPage'
 
@@ -47,7 +48,26 @@ const syncRoute = createRoute({
   component: SyncPage,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute, cardsRoute, syncRoute])
+const collectionSearchSchema = z.object({
+  page: z.coerce.number().int().positive().catch(1),
+  q: z.string().optional().catch(undefined),
+  setId: z.string().optional().catch(undefined),
+  language: z.enum(['fr', 'en']).optional().catch(undefined),
+  variant: z
+    .enum(['normal', 'reverse', 'holo', 'firstEdition', 'wPromo'])
+    .optional()
+    .catch(undefined),
+  condition: z.enum(['M', 'NM', 'EX', 'GD', 'LP', 'PL', 'HP', 'DMG']).optional().catch(undefined),
+})
+
+const collectionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/collection',
+  component: CollectionPage,
+  validateSearch: collectionSearchSchema,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, cardsRoute, syncRoute, collectionRoute])
 
 export const router = createRouter({ routeTree })
 

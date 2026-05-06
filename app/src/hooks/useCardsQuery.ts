@@ -7,10 +7,10 @@ import type { Card } from '@/types/card'
 export const CARDS_PER_PAGE = 24
 
 export type CardFilters = {
-  name?: string
-  setId?: string
-  language?: string
-  variant?: string
+  name?: string | undefined
+  setId?: string | undefined
+  language?: string | undefined
+  variant?: string | undefined
 }
 
 function buildSearch(page: number, filters: CardFilters): string {
