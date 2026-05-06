@@ -14,6 +14,7 @@ use App\Repository\CardRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -48,6 +49,7 @@ class Card
 {
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
+    #[Groups(['binder_slot:read'])]
     private Uuid $id;
 
     #[ORM\Column]
@@ -58,18 +60,25 @@ class Card
 
     public function __construct(
         #[ORM\Column(name: 'set_id', length: 64)]
+        #[Groups(['binder_slot:read'])]
         private string $setId,
         #[ORM\Column(length: 32)]
+        #[Groups(['binder_slot:read'])]
         private string $numberInSet,
         #[ORM\Column(length: 64)]
+        #[Groups(['binder_slot:read'])]
         private string $variant,
         #[ORM\Column(length: 8)]
+        #[Groups(['binder_slot:read'])]
         private string $language,
         #[ORM\Column(length: 255)]
+        #[Groups(['binder_slot:read'])]
         private string $name,
         #[ORM\Column(length: 64)]
+        #[Groups(['binder_slot:read'])]
         private string $rarity,
         #[ORM\Column(length: 500, nullable: true)]
+        #[Groups(['binder_slot:read'])]
         private ?string $imageUrl = null,
         ?Uuid $id = null,
     ) {

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Library, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Eye, Library, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -87,6 +87,17 @@ function BindersGrid({ binders }: { binders: Binder[] }) {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+                <Button asChild variant="ghost" size="sm">
+                  <Link
+                    to="/binders/$binderId"
+                    params={{ binderId: binder.id }}
+                    search={{ page: 1, face: 'recto' }}
+                    aria-label={`Voir ${binder.name}`}
+                  >
+                    <Eye />
+                    Voir
+                  </Link>
+                </Button>
                 <Button asChild variant="ghost" size="sm">
                   <Link
                     to="/binders/$binderId/edit"

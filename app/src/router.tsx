@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { BinderCreatePage } from '@/pages/BinderCreatePage'
 import { BinderEditPage } from '@/pages/BinderEditPage'
 import { BindersPage } from '@/pages/BindersPage'
+import { BinderViewPage } from '@/pages/BinderViewPage'
 import { CardsPage } from '@/pages/CardsPage'
 import { CollectionAddPage } from '@/pages/CollectionAddPage'
 import { CollectionCardPage } from '@/pages/CollectionCardPage'
@@ -96,6 +97,18 @@ const binderCreateRoute = createRoute({
   component: BinderCreatePage,
 })
 
+const binderViewSearchSchema = z.object({
+  page: z.coerce.number().int().positive().catch(1),
+  face: z.enum(['recto', 'verso']).catch('recto'),
+})
+
+const binderViewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/binders/$binderId',
+  component: BinderViewPage,
+  validateSearch: binderViewSearchSchema,
+})
+
 const binderEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/binders/$binderId/edit',
@@ -111,6 +124,7 @@ const routeTree = rootRoute.addChildren([
   collectionAddRoute,
   bindersRoute,
   binderCreateRoute,
+  binderViewRoute,
   binderEditRoute,
 ])
 

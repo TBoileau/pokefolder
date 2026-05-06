@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Enum\BinderSlotFace;
 use App\Repository\BinderSlotRepository;
 use App\Service\Binder\BinderSlotPosition;
@@ -11,6 +17,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -30,10 +37,28 @@ use Symfony\Component\Uid\Uuid;
     name: 'uniq_binder_slot_owned_card',
     columns: ['owned_card_id'],
 )]
+#[ApiResource(
+    shortName: 'BinderSlot',
+    operations: [
+        new GetCollection(),
+        new Get(),
+    ],
+    normalizationContext: ['groups' => ['binder_slot:read']],
+    order: ['pageNumber' => 'ASC', 'face' => 'ASC', 'row' => 'ASC', 'col' => 'ASC'],
+    paginationItemsPerPage: 200,
+    paginationMaximumItemsPerPage: 500,
+)]
+#[ApiFilter(SearchFilter::class, properties: [
+    'binder' => 'exact',
+    'pageNumber' => 'exact',
+    'face' => 'exact',
+])]
+#[ApiFilter(OrderFilter::class, properties: ['pageNumber', 'face', 'row', 'col'])]
 class BinderSlot
 {
     #[ORM\Id]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
+    #[Groups(['binder_slot:read'])]
     private Uuid $id;
 
     #[ORM\Column]
@@ -43,15 +68,19 @@ class BinderSlot
     private DateTimeImmutable $updatedAt;
 
     #[ORM\Column(name: 'page_number', type: Types::INTEGER)]
+    #[Groups(['binder_slot:read'])]
     private int $pageNumber;
 
     #[ORM\Column(length: 8, enumType: BinderSlotFace::class)]
+    #[Groups(['binder_slot:read'])]
     private BinderSlotFace $face;
 
     #[ORM\Column(name: 'row_index', type: Types::INTEGER)]
+    #[Groups(['binder_slot:read'])]
     private int $row;
 
     #[ORM\Column(name: 'col_index', type: Types::INTEGER)]
+    #[Groups(['binder_slot:read'])]
     private int $col;
 
     public function __construct(
@@ -61,6 +90,7 @@ class BinderSlot
         BinderSlotPosition $position,
         #[ORM\ManyToOne(targetEntity: OwnedCard::class)]
         #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
+        #[Groups(['binder_slot:read'])]
         private ?OwnedCard $ownedCard = null,
         ?Uuid $id = null,
     ) {
