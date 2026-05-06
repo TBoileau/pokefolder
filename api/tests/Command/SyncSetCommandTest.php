@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Command;
 
-use App\UseCase\Catalog\SyncSet\Input;
+use App\UseCase\Catalog\SyncCards\Input;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -12,12 +12,12 @@ use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 final class SyncSetCommandTest extends KernelTestCase
 {
-    public function testCommandDispatchesSyncSetMessageToAsyncTransport(): void
+    public function testCommandDispatchesSyncCardsMessagePerLanguage(): void
     {
         $kernel = self::bootKernel();
         $application = new Application($kernel);
 
-        $commandTester = new CommandTester($application->find('pokefolder:sync-set'));
+        $commandTester = new CommandTester($application->find('app:catalog:sync-set'));
         $exitCode = $commandTester->execute(['setId' => 'base1']);
 
         self::assertSame(0, $exitCode);
@@ -27,9 +27,13 @@ final class SyncSetCommandTest extends KernelTestCase
         $transport = self::getContainer()->get('messenger.transport.async');
         $sent = $transport->getSent();
 
-        self::assertCount(1, $sent);
-        $message = $sent[0]->getMessage();
-        self::assertInstanceOf(Input::class, $message);
-        self::assertSame('base1', $message->setId);
+        // 2 languages configured (en, fr) → 2 messages.
+        self::assertCount(2, $sent);
+        foreach ($sent as $envelope) {
+            $message = $envelope->getMessage();
+            self::assertInstanceOf(Input::class, $message);
+            self::assertSame('base1', $message->setId);
+            self::assertFalse($message->force);
+        }
     }
 }

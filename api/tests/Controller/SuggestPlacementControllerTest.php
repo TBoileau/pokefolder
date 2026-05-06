@@ -7,11 +7,11 @@ namespace App\Tests\Controller;
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use App\Entity\Binder;
 use App\Entity\BinderSlot;
-use App\Entity\Card;
 use App\Entity\OwnedCard;
 use App\Enum\BinderSlotFace;
 use App\Enum\Condition;
 use App\Service\Binder\BinderSlotPosition;
+use App\Tests\Support\CardFixtureFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -87,13 +87,14 @@ final class SuggestPlacementControllerTest extends ApiTestCase
 
     private function seedOwnedCard(EntityManagerInterface $em, string $setId): OwnedCard
     {
-        $card = new Card(
+        $card = CardFixtureFactory::create(
+            $em,
             setId: $setId,
             numberInSet: bin2hex(random_bytes(3)),
             variant: 'normal',
             language: 'en',
             name: 'Test card',
-            rarity: 'Common',
+            rarityCode: 'common',
         );
         $em->persist($card);
         $owned = new OwnedCard(card: $card, condition: Condition::NearMint);

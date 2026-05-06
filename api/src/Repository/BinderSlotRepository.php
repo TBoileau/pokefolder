@@ -43,7 +43,7 @@ final class BinderSlotRepository extends ServiceEntityRepository implements Bind
     {
         /** @var list<array{setId: string}> $rows */
         $rows = $this->createQueryBuilder('s')
-            ->select('DISTINCT c.setId AS setId')
+            ->select('DISTINCT IDENTITY(c.pokemonSet) AS setId')
             ->innerJoin('s.ownedCard', 'oc')
             ->innerJoin('oc.card', 'c')
             ->where('s.binder = :binder')

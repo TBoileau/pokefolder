@@ -118,13 +118,14 @@ final class PlacementSuggesterTest extends TestCase
 
     private function makeOwnedCard(string $setId): OwnedCard
     {
+        $serie = new \App\Entity\Serie('base');
+        $set = new \App\Entity\PokemonSet($setId, $serie);
         $card = new Card(
-            setId: $setId,
+            pokemonSet: $set,
             numberInSet: '1',
             variant: 'normal',
             language: 'en',
             name: 'Test card',
-            rarity: 'Common',
         );
 
         return new OwnedCard(card: $card, condition: Condition::NearMint);

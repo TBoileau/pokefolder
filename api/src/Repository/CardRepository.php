@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Card;
+use App\Entity\PokemonSet;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -19,13 +20,13 @@ final class CardRepository extends ServiceEntityRepository
     }
 
     public function findByFunctionalIdentity(
-        string $setId,
+        PokemonSet $pokemonSet,
         string $numberInSet,
         string $variant,
         string $language,
     ): ?Card {
         return $this->findOneBy([
-            'setId' => $setId,
+            'pokemonSet' => $pokemonSet,
             'numberInSet' => $numberInSet,
             'variant' => $variant,
             'language' => $language,

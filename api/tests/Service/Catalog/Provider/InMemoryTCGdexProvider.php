@@ -4,48 +4,90 @@ declare(strict_types=1);
 
 namespace App\Tests\Service\Catalog\Provider;
 
-use App\Service\Catalog\DTO\TCGdexSet;
+use App\Service\Catalog\DTO\TCGdexCard;
+use App\Service\Catalog\DTO\TCGdexSerieDetail;
+use App\Service\Catalog\DTO\TCGdexSerieResume;
+use App\Service\Catalog\DTO\TCGdexSetDetail;
 use App\Service\Catalog\Provider\TCGdexProvider;
 
-use function strlen;
-
 /**
- * Test double: holds set fixtures keyed by (setId, language) and returns
- * them deterministically. Anything not registered returns null, mirroring
- * the production behaviour for missing sets/languages.
+ * In-memory test double for TCGdexProvider. Tests pre-load fixtures via
+ * the register* methods, then run handlers without touching the network.
+ *
+ * @internal
  */
 final class InMemoryTCGdexProvider implements TCGdexProvider
 {
     /**
-     * @var array<string, TCGdexSet>
+     * @var array<string, list<TCGdexSerieResume>>
      */
-    private array $sets = [];
+    private array $seriesByLanguage = [];
 
-    public function register(string $setId, string $language, TCGdexSet $tcGdexSet): void
+    /**
+     * @var array<string, TCGdexSerieDetail>
+     */
+    private array $serieDetails = [];
+
+    /**
+     * @var array<string, TCGdexSetDetail>
+     */
+    private array $setDetails = [];
+
+    /**
+     * @var array<string, TCGdexCard>
+     */
+    private array $cardDetails = [];
+
+    /**
+     * @param list<TCGdexSerieResume> $series
+     */
+    public function registerSeriesList(string $language, array $series): void
     {
-        $this->sets[$this->key($setId, $language)] = $tcGdexSet;
+        $this->seriesByLanguage[$language] = $series;
     }
 
-    public function fetchSet(string $setId, string $language): ?TCGdexSet
+    public function registerSerie(string $serieId, string $language, TCGdexSerieDetail $detail): void
     {
-        return $this->sets[$this->key($setId, $language)] ?? null;
+        $this->serieDetails[$this->key($serieId, $language)] = $detail;
     }
 
-    public function listSetIds(string $language): array
+    public function registerSet(string $setId, string $language, TCGdexSetDetail $detail): void
     {
-        $ids = [];
-        $suffix = '|'.$language;
-        foreach (array_keys($this->sets) as $key) {
-            if (str_ends_with($key, $suffix)) {
-                $ids[] = substr($key, 0, -strlen($suffix));
-            }
-        }
-
-        return $ids;
+        $this->setDetails[$this->key($setId, $language)] = $detail;
     }
 
-    private function key(string $setId, string $language): string
+    public function registerCard(string $setId, string $localId, string $language, TCGdexCard $card): void
     {
-        return $setId.'|'.$language;
+        $this->cardDetails[$this->cardKey($setId, $localId, $language)] = $card;
+    }
+
+    public function listSeries(string $language): array
+    {
+        return $this->seriesByLanguage[$language] ?? [];
+    }
+
+    public function fetchSerie(string $serieId, string $language): ?TCGdexSerieDetail
+    {
+        return $this->serieDetails[$this->key($serieId, $language)] ?? null;
+    }
+
+    public function fetchSet(string $setId, string $language): ?TCGdexSetDetail
+    {
+        return $this->setDetails[$this->key($setId, $language)] ?? null;
+    }
+
+    public function fetchCard(string $setId, string $localId, string $language): ?TCGdexCard
+    {
+        return $this->cardDetails[$this->cardKey($setId, $localId, $language)] ?? null;
+    }
+
+    private function key(string $id, string $language): string
+    {
+        return $id.'|'.$language;
+    }
+
+    private function cardKey(string $setId, string $localId, string $language): string
+    {
+        return $setId.'|'.$localId.'|'.$language;
     }
 }

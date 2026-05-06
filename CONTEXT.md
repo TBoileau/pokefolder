@@ -123,6 +123,8 @@ A top-level grouping of Pokémon TCG sets (e.g. "Sword & Shield", "Scarlet & Vio
 
 A Pokémon TCG set (e.g. "Base Set", "Sword & Shield Base", "Scarlet & Violet Base"). Belongs to exactly one `Serie`.
 
+The PHP class is `App\Entity\PokemonSet` (table `pokemon_set`); "Set" is the domain term used everywhere else (API path `/api/pokemon_sets`, UI labels, this glossary).
+
 **Functional identity**: `id` (TCGdex set code, e.g. `base1`, `swsh1`, `sv01`).
 
 **Properties**:

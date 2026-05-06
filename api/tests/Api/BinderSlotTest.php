@@ -7,11 +7,11 @@ namespace App\Tests\Api;
 use ApiPlatform\Symfony\Bundle\Test\ApiTestCase;
 use App\Entity\Binder;
 use App\Entity\BinderSlot;
-use App\Entity\Card;
 use App\Entity\OwnedCard;
 use App\Enum\BinderSlotFace;
 use App\Enum\Condition;
 use App\Service\Binder\BinderSlotPosition;
+use App\Tests\Support\CardFixtureFactory;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,13 +33,14 @@ final class BinderSlotTest extends ApiTestCase
         );
         $em->persist($binder);
 
-        $card = new Card(
+        $card = CardFixtureFactory::create(
+            $em,
             setId: 'base1',
             numberInSet: '4',
             variant: 'normal',
             language: 'en',
             name: 'Charizard',
-            rarity: 'Rare Holo',
+            rarityCode: 'rare-holo',
             imageUrl: 'https://example.test/4',
         );
         $em->persist($card);
@@ -71,7 +72,6 @@ final class BinderSlotTest extends ApiTestCase
                         'condition' => 'NM',
                         'card' => [
                             '@type' => 'Card',
-                            'setId' => 'base1',
                             'numberInSet' => '4',
                             'name' => 'Charizard',
                             'imageUrl' => 'https://example.test/4',

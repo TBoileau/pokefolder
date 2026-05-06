@@ -5,8 +5,10 @@ framework:
             sync: 'sync://'
 
         routing:
-            App\UseCase\Catalog\SyncSet\Input: async
             App\UseCase\Catalog\SyncAll\Input: async
+            App\UseCase\Catalog\SyncSeries\Input: async
+            App\UseCase\Catalog\SyncSets\Input: async
+            App\UseCase\Catalog\SyncCards\Input: async
 
 when@test:
     framework:

@@ -312,13 +312,14 @@ final class BinderPlacementServiceTest extends TestCase
 
     private function makeOwnedCard(): OwnedCard
     {
+        $serie = new \App\Entity\Serie('base');
+        $set = new \App\Entity\PokemonSet('base1', $serie);
         $card = new Card(
-            setId: 'base1',
+            pokemonSet: $set,
             numberInSet: '4',
             variant: 'normal',
             language: 'en',
             name: 'Charizard',
-            rarity: 'Rare Holo',
         );
 
         return new OwnedCard(card: $card, condition: Condition::NearMint);

@@ -4,25 +4,39 @@ declare(strict_types=1);
 
 namespace App\Service\Catalog\Provider;
 
-use App\Service\Catalog\DTO\TCGdexSet;
+use App\Service\Catalog\DTO\TCGdexCard;
+use App\Service\Catalog\DTO\TCGdexSerieDetail;
+use App\Service\Catalog\DTO\TCGdexSerieResume;
+use App\Service\Catalog\DTO\TCGdexSetDetail;
 
 /**
- * Read-side abstraction over TCGdex. The application depends on this
- * interface so the synchroniser can be tested against in-memory fixtures
- * without touching the network.
+ * Read-side abstraction over TCGdex. Production impl uses the SDK; tests
+ * can pass an in-memory fake without touching the network.
  */
 interface TCGdexProvider
 {
     /**
-     * Returns the set's catalogue snapshot for the given language, or null
-     * if the set is not available in that language.
+     * Returns the list of all series available in the given language.
+     *
+     * @return list<TCGdexSerieResume>
      */
-    public function fetchSet(string $setId, string $language): ?TCGdexSet;
+    public function listSeries(string $language): array;
 
     /**
-     * Returns every TCGdex set identifier available in the given language.
-     *
-     * @return list<string>
+     * Returns the full serie (with its sets list) in the given language,
+     * or null if the serie is not available.
      */
-    public function listSetIds(string $language): array;
+    public function fetchSerie(string $serieId, string $language): ?TCGdexSerieDetail;
+
+    /**
+     * Returns the full set (with its cards listing) in the given language,
+     * or null if the set is not available.
+     */
+    public function fetchSet(string $setId, string $language): ?TCGdexSetDetail;
+
+    /**
+     * Returns the full card (variants, rarity, image) in the given language,
+     * or null if the card is not available.
+     */
+    public function fetchCard(string $setId, string $localId, string $language): ?TCGdexCard;
 }
