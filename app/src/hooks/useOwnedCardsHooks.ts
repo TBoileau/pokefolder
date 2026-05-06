@@ -48,3 +48,21 @@ export function useUpdateConditionMutation(cardId: string) {
     },
   })
 }
+
+async function deleteResource(url: string): Promise<void> {
+  const response = await fetch(url, { method: 'DELETE' })
+  if (!response.ok && response.status !== 204) {
+    throw new Error(`HTTP ${response.status} on ${url}`)
+  }
+}
+
+export function useDeleteOwnedCardMutation(cardId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ownedCardId: string) => deleteResource(`/api/owned_cards/${ownedCardId}`),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['owned-cards', { card: cardId }] })
+      await queryClient.invalidateQueries({ queryKey: ['collection'] })
+    },
+  })
+}
