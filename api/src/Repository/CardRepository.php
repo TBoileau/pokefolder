@@ -17,4 +17,18 @@ final class CardRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Card::class);
     }
+
+    public function findByFunctionalIdentity(
+        string $set,
+        string $numberInSet,
+        string $variant,
+        string $language,
+    ): ?Card {
+        return $this->findOneBy([
+            'set' => $set,
+            'numberInSet' => $numberInSet,
+            'variant' => $variant,
+            'language' => $language,
+        ]);
+    }
 }
