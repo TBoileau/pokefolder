@@ -80,7 +80,6 @@ export function CollectionAddPage() {
     void navigate({
       to: '/binders/$binderId',
       params: { binderId },
-      search: { page: 1, face: 'recto' },
     })
   }
 
