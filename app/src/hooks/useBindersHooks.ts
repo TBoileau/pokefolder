@@ -93,6 +93,25 @@ export type MovePayload = {
   col: number
 }
 
+export type PlacementSuggestion = {
+  binderId: string | null
+}
+
+export function useSuggestPlacementMutation() {
+  return useMutation({
+    mutationFn: async (ownedCardId: string) => {
+      const response = await fetch(`/api/owned-cards/${ownedCardId}/suggest-placement`, {
+        method: 'POST',
+      })
+      if (!response.ok) {
+        const text = await response.text().catch(() => '')
+        throw new PlacementHttpError(response.status, text || `HTTP ${response.status}`)
+      }
+      return (await response.json()) as PlacementSuggestion
+    },
+  })
+}
+
 export function useUnplaceCardMutation(binderId: string) {
   const queryClient = useQueryClient()
   return useMutation({
