@@ -25,6 +25,7 @@ Single-context repo: one `CONTEXT.md` + `docs/adr/` at the root, shared across `
 - **Backend layout** : feature-folder + `UseCase/` (voir [ADR-0005](docs/adr/0005-feature-folder-layout.md)).
   - `src/Command/`, `src/Controller/`, `src/Entity/`, `src/Repository/` : conventionnels Symfony, à la racine.
   - `src/Service/<Area>/` : utilities réutilisables (DTOs, providers, factories, value objects), groupées par domaine.
-  - `src/UseCase/<Area>/<Verb>/` : opérations métier non triviales — chacune a `Input.php` + `Handler.php` (+ `Output.php` quand le handler retourne un objet riche, + exceptions spécifiques au use case). Le `Handler` est registered via `#[AsMessageHandler]` pour les use cases async.
+  - `src/Exception/<Area>/` : exceptions métier, groupées par domaine (partagées par les use cases qui les lèvent / catchent).
+  - `src/UseCase/<Area>/<Verb>/` : opérations métier non triviales — chacune a `Input.php` + `Handler.php` (+ `Output.php` quand le handler retourne un objet riche). Le `Handler` est registered via `#[AsMessageHandler]` pour les use cases async.
   - Critère pour créer un UseCase plutôt que CRUD direct API Platform : multi-aggregate, side effects, invariants non triviaux, async/queue, ou heuristique/logique de query. Sinon CRUD direct via API Platform default operations + Symfony Validator.
   - Tests miroir la structure prod (`tests/UseCase/<Area>/<Verb>/HandlerTest.php`, `tests/Service/<Area>/...`).
