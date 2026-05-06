@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CARDS_PER_PAGE, useCardsQuery } from '@/hooks/useCardsQuery'
+import { tcgdexImageUrl } from '@/lib/tcgdex'
 import type { Card } from '@/types/card'
 
 export function CardsPage() {
@@ -84,7 +85,7 @@ function CardsGrid({ cards }: { cards: Card[] }) {
             <div className="aspect-[5/7] w-full bg-muted">
               {card.imageUrl ? (
                 <img
-                  src={card.imageUrl}
+                  src={tcgdexImageUrl(card.imageUrl, 'high', 'webp')}
                   alt={card.name}
                   loading="lazy"
                   className="h-full w-full object-contain"
