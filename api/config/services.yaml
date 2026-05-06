@@ -29,6 +29,11 @@ services:
     # And the inventory surface used by the placement suggester.
     App\Service\Binder\BinderInventoryInterface: '@App\Repository\BinderSlotRepository'
 
+    # Custom collection extension: adds ?placed=true|false on OwnedCard.
+    App\Api\Doctrine\PlacedFilterExtension:
+        tags:
+            - { name: 'api_platform.doctrine.orm.query_extension.collection' }
+
     # TCGdex SDK client built by our factory (so we control its PSR slots).
     TCGdex\TCGdex:
         factory: ['@App\Service\Catalog\Provider\TCGdexClientFactory', 'create']

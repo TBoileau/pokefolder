@@ -29,6 +29,61 @@ export function useBinderSlotsQuery(binderId: string) {
   })
 }
 
+export type PlacePayload = {
+  ownedCardId: string
+  pageNumber: number
+  face: 'recto' | 'verso'
+  row: number
+  col: number
+}
+
+export type PlaceResponse = {
+  slotId: string
+  binderId: string
+  ownedCardId: string
+  pageNumber: number
+  face: 'recto' | 'verso'
+  row: number
+  col: number
+}
+
+export class PlacementHttpError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
+async function postPlainJson<T>(url: string, body: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    throw new PlacementHttpError(response.status, text || `HTTP ${response.status} on ${url}`)
+  }
+  return (await response.json()) as T
+}
+
+export function usePlaceCardMutation(binderId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: PlacePayload) =>
+      postPlainJson<PlaceResponse>(`/api/binders/${binderId}/place`, payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['binders', 'slots', binderId] }),
+        queryClient.invalidateQueries({ queryKey: ['owned-cards'] }),
+        queryClient.invalidateQueries({ queryKey: ['collection'] }),
+      ])
+    },
+  })
+}
+
 export type BinderInput = {
   name: string
   description: string | null
