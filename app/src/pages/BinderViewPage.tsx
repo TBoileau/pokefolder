@@ -10,7 +10,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { ArrowLeft, ChevronLeft, ChevronRight, Library } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Library, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -22,6 +22,20 @@ import {
   CardTitle,
   Card as UICard,
 } from '@/components/ui/card'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   PlacementHttpError,
@@ -29,6 +43,7 @@ import {
   useBinderSlotsQuery,
   useMoveCardMutation,
   usePlaceCardMutation,
+  useUnplaceCardMutation,
 } from '@/hooks/useBindersHooks'
 import { useFreeOwnedCardsQuery } from '@/hooks/useOwnedCardsHooks'
 import { tcgdexImageUrl } from '@/lib/tcgdex'
@@ -50,6 +65,26 @@ export function BinderViewPage() {
   const freeCardsQuery = useFreeOwnedCardsQuery()
   const placeCard = usePlaceCardMutation(binderId)
   const moveCard = useMoveCardMutation(binderId)
+  const unplaceCard = useUnplaceCardMutation(binderId)
+
+  const [unplaceTarget, setUnplaceTarget] = useState<NonNullable<BinderSlot['ownedCard']> | null>(
+    null,
+  )
+
+  const confirmUnplace = () => {
+    if (!unplaceTarget) return
+    const target = unplaceTarget
+    unplaceCard.mutate(target.id, {
+      onSuccess: () => {
+        toast.success('Carte retirée du classeur')
+        setUnplaceTarget(null)
+      },
+      onError: (error) => {
+        toast.error(`Échec : ${(error as Error).message}`)
+        setUnplaceTarget(null)
+      },
+    })
+  }
 
   const binder = binderQuery.data
   const slots = slotsQuery.data?.member ?? []
@@ -246,6 +281,7 @@ export function BinderViewPage() {
                         page={currentPage}
                         face={currentFace}
                         slotIndex={slotIndex}
+                        onRequestUnplace={setUnplaceTarget}
                       />
                     )}
                   </CardContent>
@@ -261,6 +297,37 @@ export function BinderViewPage() {
           )}
         </main>
       </div>
+
+      <Dialog
+        open={unplaceTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !unplaceCard.isPending) setUnplaceTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Retirer cette carte du classeur ?</DialogTitle>
+            <DialogDescription>
+              {unplaceTarget
+                ? `${unplaceTarget.card.name} (${unplaceTarget.card.setId} #${unplaceTarget.card.numberInSet}) restera dans ta collection — seul son emplacement dans ce classeur sera libéré.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setUnplaceTarget(null)}
+              disabled={unplaceCard.isPending}
+            >
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={confirmUnplace} disabled={unplaceCard.isPending}>
+              <Trash2 />
+              Retirer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DragOverlay dropAnimation={null}>
         {activeOwnedCardId ? (
@@ -378,11 +445,13 @@ function Grid({
   page,
   face,
   slotIndex,
+  onRequestUnplace,
 }: {
   binder: Binder
   page: number
   face: BinderSlotFace
   slotIndex: SlotIndex
+  onRequestUnplace: (ownedCard: NonNullable<BinderSlot['ownedCard']>) => void
 }) {
   const cells: { row: number; col: number; slot: BinderSlot | undefined }[] = []
   for (let row = 1; row <= binder.rows; row += 1) {
@@ -397,7 +466,15 @@ function Grid({
       style={{ gridTemplateColumns: `repeat(${binder.cols}, minmax(0, 1fr))` }}
     >
       {cells.map(({ row, col, slot }) => (
-        <SlotCell key={`${row}-${col}`} page={page} face={face} row={row} col={col} slot={slot} />
+        <SlotCell
+          key={`${row}-${col}`}
+          page={page}
+          face={face}
+          row={row}
+          col={col}
+          slot={slot}
+          onRequestUnplace={onRequestUnplace}
+        />
       ))}
     </div>
   )
@@ -409,12 +486,14 @@ function SlotCell({
   row,
   col,
   slot,
+  onRequestUnplace,
 }: {
   page: number
   face: BinderSlotFace
   row: number
   col: number
   slot: BinderSlot | undefined
+  onRequestUnplace: (ownedCard: NonNullable<BinderSlot['ownedCard']>) => void
 }) {
   const droppableId = `${DROPPABLE_PREFIX}${positionKey(page, face, row, col)}`
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
@@ -439,10 +518,16 @@ function SlotCell({
     )
   }
 
-  return <OccupiedSlotCell ownedCard={slot.ownedCard} />
+  return <OccupiedSlotCell ownedCard={slot.ownedCard} onRequestUnplace={onRequestUnplace} />
 }
 
-function OccupiedSlotCell({ ownedCard }: { ownedCard: NonNullable<BinderSlot['ownedCard']> }) {
+function OccupiedSlotCell({
+  ownedCard,
+  onRequestUnplace,
+}: {
+  ownedCard: NonNullable<BinderSlot['ownedCard']>
+  onRequestUnplace: (ownedCard: NonNullable<BinderSlot['ownedCard']>) => void
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${DRAGGABLE_SLOT}${ownedCard.id}`,
   })
@@ -451,35 +536,51 @@ function OccupiedSlotCell({ ownedCard }: { ownedCard: NonNullable<BinderSlot['ow
   const tooltip = `${card.name} — ${card.setId} #${card.numberInSet} (${ownedCard.condition})`
 
   return (
-    <Link
-      ref={setNodeRef}
-      to="/collection/cards/$cardId"
-      params={{ cardId: card.id }}
-      title={tooltip}
-      aria-label={tooltip}
-      {...listeners}
-      {...attributes}
-      className={`group relative block aspect-[5/7] cursor-grab overflow-hidden rounded-md border bg-muted shadow-sm transition focus-visible:outline-2 focus-visible:outline-primary active:cursor-grabbing ${
-        isDragging ? 'opacity-30' : 'hover:shadow-md'
-      }`}
-    >
-      {card.imageUrl ? (
-        <img
-          src={tcgdexImageUrl(card.imageUrl, 'low')}
-          alt={card.name}
-          className="size-full object-cover"
-          loading="lazy"
-          draggable={false}
-        />
-      ) : (
-        <div className="flex size-full items-center justify-center text-center text-muted-foreground text-xs">
-          {card.name}
-        </div>
-      )}
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-background/80 px-1.5 py-0.5 text-[10px] opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
-        {card.name}
-      </span>
-    </Link>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <Link
+          ref={setNodeRef}
+          to="/collection/cards/$cardId"
+          params={{ cardId: card.id }}
+          title={tooltip}
+          aria-label={tooltip}
+          {...listeners}
+          {...attributes}
+          className={`group relative block aspect-[5/7] cursor-grab overflow-hidden rounded-md border bg-muted shadow-sm transition focus-visible:outline-2 focus-visible:outline-primary active:cursor-grabbing ${
+            isDragging ? 'opacity-30' : 'hover:shadow-md'
+          }`}
+        >
+          {card.imageUrl ? (
+            <img
+              src={tcgdexImageUrl(card.imageUrl, 'low')}
+              alt={card.name}
+              className="size-full object-cover"
+              loading="lazy"
+              draggable={false}
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-center text-muted-foreground text-xs">
+              {card.name}
+            </div>
+          )}
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-background/80 px-1.5 py-0.5 text-[10px] opacity-0 backdrop-blur-sm transition group-hover:opacity-100">
+            {card.name}
+          </span>
+        </Link>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ContextMenuItem
+          variant="destructive"
+          onSelect={(event) => {
+            event.preventDefault()
+            onRequestUnplace(ownedCard)
+          }}
+        >
+          <Trash2 />
+          Retirer du classeur
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 
