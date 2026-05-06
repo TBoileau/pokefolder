@@ -19,13 +19,13 @@ final class CardRepository extends ServiceEntityRepository
     }
 
     public function findByFunctionalIdentity(
-        string $set,
+        string $setId,
         string $numberInSet,
         string $variant,
         string $language,
     ): ?Card {
         return $this->findOneBy([
-            'set' => $set,
+            'setId' => $setId,
             'numberInSet' => $numberInSet,
             'variant' => $variant,
             'language' => $language,

@@ -14,7 +14,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * Imports a TCGdex set's cards into the local catalogue. Idempotent:
  * re-running for the same set updates existing rows in place rather than
  * creating duplicates. The functional identity is
- * (set, numberInSet, variant, language).
+ * (setId, numberInSet, variant, language).
  *
  * Each `(card, variant)` returned by TCGdex is fanned out to one row per
  * configured language. A set that is missing in a given language is
@@ -58,7 +58,7 @@ final class CatalogSynchronizer
 
                     if ($existing === null) {
                         $this->em->persist(new Card(
-                            set: $setId,
+                            setId: $setId,
                             numberInSet: $card->localId,
                             variant: $variant,
                             language: $language,
