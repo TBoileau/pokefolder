@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**'
+      - '!**.md'
+      - 'CONTEXT.md'
+      - 'CLAUDE.md'
+      - '!docs/adr/**'
+      - '!.gitignore'
+  pull_request:
+    paths:
+      - '**'
+      - '!**.md'
+      - 'CONTEXT.md'
+      - 'CLAUDE.md'
+      - '!docs/adr/**'
+      - '!.gitignore'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    name: qa:all + test:all + app:build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: pokefolder
+          POSTGRES_PASSWORD: pokefolder
+          POSTGRES_DB: pokefolder
+        ports:
+          - 60010:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      rabbitmq:
+        image: rabbitmq:4-management
+        env:
+          RABBITMQ_DEFAULT_USER: pokefolder
+          RABBITMQ_DEFAULT_PASS: pokefolder
+        ports:
+          - 60011:5672
+          - 60012:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, dom, iconv, intl, mbstring, pdo_pgsql, sodium, xml
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Setup Castor
+        uses: castor-php/setup-castor@v1.0.0
+
+      - name: Restore Composer cache
+        uses: actions/cache@v4
+        with:
+          path: api/vendor
+          key: composer-${{ runner.os }}-${{ hashFiles('api/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-
+
+      - name: Install API dependencies
+        run: castor api:install
+
+      - name: Install front dependencies
+        run: castor app:install
+
+      - name: Warm Symfony dev cache (required for PHPStan + Rector container resolution)
+        working-directory: api
+        run: bin/console cache:warmup --env=dev
+
+      - name: Create test database
+        working-directory: api
+        env:
+          APP_ENV: test
+        run: bin/console doctrine:database:create --if-not-exists --no-interaction
+
+      - name: Apply migrations on the test database
+        run: castor api:migrate:test
+
+      - name: Run QA gate (parallel)
+        run: castor --context=ci qa:all
+
+      - name: Run test suites
+        run: castor --context=ci test:all
+
+      - name: Build the front for production
+        run: castor app:build
