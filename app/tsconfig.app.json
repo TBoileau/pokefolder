@@ -19,6 +19,14 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Strict mode (ADR-0006) */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
