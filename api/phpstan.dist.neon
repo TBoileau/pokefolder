@@ -1,0 +1,16 @@
+includes:
+    - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+    # phpstan-strict-rules and phpstan-deprecation-rules are auto-included
+    # by phpstan/extension-installer.
+
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+
+    checkImplicitMixed: true
+    checkUninitializedProperties: true
+
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml

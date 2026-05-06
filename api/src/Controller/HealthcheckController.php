@@ -9,13 +9,14 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Throwable;
 
-final class HealthcheckController
+final readonly class HealthcheckController
 {
     public function __construct(
-        private readonly Connection $connection,
+        private Connection $connection,
         #[Autowire('%env(MESSENGER_TRANSPORT_DSN)%')]
-        private readonly string $messengerTransportDsn,
+        private string $messengerTransportDsn,
     ) {
     }
 
@@ -25,7 +26,7 @@ final class HealthcheckController
         $db = $this->checkDatabase() ? 'ok' : 'fail';
         $amqp = $this->checkAmqp() ? 'ok' : 'fail';
 
-        $status = ($db === 'ok' && $amqp === 'ok')
+        $status = ('ok' === $db && 'ok' === $amqp)
             ? Response::HTTP_OK
             : Response::HTTP_SERVICE_UNAVAILABLE;
 
@@ -38,7 +39,7 @@ final class HealthcheckController
             $this->connection->executeQuery('SELECT 1');
 
             return true;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
     }
@@ -56,10 +57,11 @@ final class HealthcheckController
             return false;
         }
 
-        $sock = @fsockopen($parsed['host'], (int) $parsed['port'], $errno, $errstr, 1.0);
-        if ($sock === false) {
+        $sock = @fsockopen($parsed['host'], $parsed['port'], $errno, $errstr, 1.0);
+        if (false === $sock) {
             return false;
         }
+
         fclose($sock);
 
         return true;

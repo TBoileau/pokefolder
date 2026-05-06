@@ -13,13 +13,17 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Messenger\MessageBusInterface;
 
+use function assert;
+use function is_string;
+use function sprintf;
+
 #[AsCommand(
     name: 'pokefolder:sync-set',
     description: 'Dispatch a targeted TCGdex catalog sync for one set on the async queue.',
 )]
 final class SyncSetCommand extends Command
 {
-    public function __construct(private readonly MessageBusInterface $bus)
+    public function __construct(private readonly MessageBusInterface $messageBus)
     {
         parent::__construct();
     }
@@ -31,12 +35,13 @@ final class SyncSetCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io = new SymfonyStyle($input, $output);
-        $setId = (string) $input->getArgument('setId');
+        $symfonyStyle = new SymfonyStyle($input, $output);
+        $setId = $input->getArgument('setId');
+        assert(is_string($setId));
 
-        $this->bus->dispatch(new Input($setId));
+        $this->messageBus->dispatch(new Input($setId));
 
-        $io->success(\sprintf(
+        $symfonyStyle->success(sprintf(
             'Sync dispatched for set "%s". Run "bin/console messenger:consume async" to process it.',
             $setId,
         ));

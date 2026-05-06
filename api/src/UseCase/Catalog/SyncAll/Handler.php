@@ -10,6 +10,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
+use function count;
+
 /**
  * Resolves the full TCGdex set list (in the first configured language)
  * and fans out one SyncSet message per set on the async queue. The actual
@@ -28,8 +30,8 @@ final readonly class Handler
      * @param list<string> $languages ISO 639-1 codes (e.g. ['en', 'fr']).
      */
     public function __construct(
-        private TCGdexProvider $provider,
-        private MessageBusInterface $bus,
+        private TCGdexProvider $tcGdexProvider,
+        private MessageBusInterface $messageBus,
         #[Autowire(param: 'pokefolder.catalog.languages')]
         private array $languages,
     ) {
@@ -38,12 +40,12 @@ final readonly class Handler
     public function __invoke(Input $input): Output
     {
         $sourceLanguage = $this->languages[0] ?? 'en';
-        $setIds = $this->provider->listSetIds($sourceLanguage);
+        $setIds = $this->tcGdexProvider->listSetIds($sourceLanguage);
 
         foreach ($setIds as $setId) {
-            $this->bus->dispatch(new SyncSetInput($setId));
+            $this->messageBus->dispatch(new SyncSetInput($setId));
         }
 
-        return new Output(\count($setIds));
+        return new Output(count($setIds));
     }
 }

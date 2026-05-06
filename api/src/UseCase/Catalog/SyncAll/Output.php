@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\UseCase\Catalog\SyncAll;
 
-final class Output
+final readonly class Output
 {
-    public function __construct(public readonly int $dispatched)
+    public function __construct(public int $dispatched)
     {
     }
 }

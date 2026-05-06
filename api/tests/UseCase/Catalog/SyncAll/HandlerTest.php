@@ -15,69 +15,71 @@ use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 final class HandlerTest extends KernelTestCase
 {
-    private InMemoryTCGdexProvider $provider;
-    private MessageBusInterface $bus;
-    private InMemoryTransport $transport;
+    private InMemoryTCGdexProvider $inMemoryTCGdexProvider;
+
+    private MessageBusInterface $messageBus;
+
+    private InMemoryTransport $inMemoryTransport;
 
     protected function setUp(): void
     {
         self::bootKernel();
-        $container = static::getContainer();
+        $container = self::getContainer();
 
-        $this->provider = new InMemoryTCGdexProvider();
-        $this->bus = $container->get(MessageBusInterface::class);
+        $this->inMemoryTCGdexProvider = new InMemoryTCGdexProvider();
+        $this->messageBus = $container->get(MessageBusInterface::class);
         /** @var InMemoryTransport $transport */
         $transport = $container->get('messenger.transport.async');
-        $this->transport = $transport;
+        $this->inMemoryTransport = $transport;
     }
 
     public function testDispatchesOneSyncSetInputPerSet(): void
     {
-        $this->provider->register('base1', 'en', new TCGdexSet('base1', []));
-        $this->provider->register('jungle', 'en', new TCGdexSet('jungle', []));
-        $this->provider->register('fossil', 'en', new TCGdexSet('fossil', []));
+        $this->inMemoryTCGdexProvider->register('base1', 'en', new TCGdexSet('base1', []));
+        $this->inMemoryTCGdexProvider->register('jungle', 'en', new TCGdexSet('jungle', []));
+        $this->inMemoryTCGdexProvider->register('fossil', 'en', new TCGdexSet('fossil', []));
 
-        $handler = new Handler($this->provider, $this->bus, ['en']);
+        $handler = new Handler($this->inMemoryTCGdexProvider, $this->messageBus, ['en']);
 
         $output = ($handler)(new Input());
 
         self::assertSame(3, $output->dispatched);
 
-        $sent = $this->transport->getSent();
+        $sent = $this->inMemoryTransport->getSent();
         self::assertCount(3, $sent);
-        $dispatchedSetIds = array_map(
-            static fn ($envelope): string => $envelope->getMessage()->setId,
-            $sent,
-        );
-        self::assertSame(['base1', 'jungle', 'fossil'], $dispatchedSetIds);
+        $dispatchedSetIds = [];
         foreach ($sent as $envelope) {
-            self::assertInstanceOf(SyncSetInput::class, $envelope->getMessage());
+            $message = $envelope->getMessage();
+            self::assertInstanceOf(SyncSetInput::class, $message);
+            $dispatchedSetIds[] = $message->setId;
         }
+
+        self::assertSame(['base1', 'jungle', 'fossil'], $dispatchedSetIds);
     }
 
     public function testReturnsZeroWhenNoSetsAreAvailable(): void
     {
-        $handler = new Handler($this->provider, $this->bus, ['en']);
+        $handler = new Handler($this->inMemoryTCGdexProvider, $this->messageBus, ['en']);
 
         $output = ($handler)(new Input());
 
         self::assertSame(0, $output->dispatched);
-        self::assertCount(0, $this->transport->getSent());
+        self::assertCount(0, $this->inMemoryTransport->getSent());
     }
 
     public function testQueriesTheFirstConfiguredLanguageForTheSetList(): void
     {
         // Set exists only in 'fr', not in 'en'
-        $this->provider->register('promo-fr-only', 'fr', new TCGdexSet('promo-fr-only', []));
+        $this->inMemoryTCGdexProvider->register('promo-fr-only', 'fr', new TCGdexSet('promo-fr-only', []));
 
         // First configured language is 'en' → handler queries 'en' → no sets found
-        $handler = new Handler($this->provider, $this->bus, ['en', 'fr']);
+        $handler = new Handler($this->inMemoryTCGdexProvider, $this->messageBus, ['en', 'fr']);
         $output = ($handler)(new Input());
 
         self::assertSame(0, $output->dispatched);
 
         // First configured language is 'fr' → handler queries 'fr' → 1 set found
-        $handler = new Handler($this->provider, $this->bus, ['fr', 'en']);
+        $handler = new Handler($this->inMemoryTCGdexProvider, $this->messageBus, ['fr', 'en']);
         $output = ($handler)(new Input());
 
         self::assertSame(1, $output->dispatched);

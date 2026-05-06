@@ -14,7 +14,7 @@ final class CardTest extends ApiTestCase
 
     public function testGetCollectionReturnsEmptyHydraCollectionInitially(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $client->request('GET', '/api/cards');
 
         self::assertResponseStatusCodeSame(Response::HTTP_OK);
@@ -30,10 +30,10 @@ final class CardTest extends ApiTestCase
 
     public function testGetItemReturns404WhenCardDoesNotExist(): void
     {
-        $client = static::createClient();
+        $client = self::createClient();
         $randomId = Uuid::v7()->toRfc4122();
 
-        $client->request('GET', "/api/cards/{$randomId}");
+        $client->request('GET', '/api/cards/'.$randomId);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }

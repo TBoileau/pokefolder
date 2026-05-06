@@ -18,18 +18,18 @@ use Symfony\Component\Messenger\MessageBusInterface;
 )]
 final class SyncCommand extends Command
 {
-    public function __construct(private readonly MessageBusInterface $bus)
+    public function __construct(private readonly MessageBusInterface $messageBus)
     {
         parent::__construct();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $io = new SymfonyStyle($input, $output);
+        $symfonyStyle = new SymfonyStyle($input, $output);
 
-        $this->bus->dispatch(new SyncAllInput());
+        $this->messageBus->dispatch(new SyncAllInput());
 
-        $io->success('Global sync dispatched. Run "bin/console messenger:consume async" to process the queue.');
+        $symfonyStyle->success('Global sync dispatched. Run "bin/console messenger:consume async" to process the queue.');
 
         return Command::SUCCESS;
     }
