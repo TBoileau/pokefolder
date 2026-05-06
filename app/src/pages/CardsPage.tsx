@@ -1,15 +1,9 @@
-import { useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { CheckSquare, ChevronLeft, ChevronRight, Loader2, Search, Square, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import {
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Card as UICard,
-} from '@/components/ui/card'
+import { CardContent, Card as UICard } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -19,59 +13,137 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CARDS_PER_PAGE, useCardsQuery } from '@/hooks/useCardsQuery'
+import {
+  CARDS_PER_PAGE,
+  type CardFilters,
+  useAddOwnedCardMutation,
+  useCardsQuery,
+  useDeleteOwnedCardSimpleMutation,
+  useOwnedCardsBySetQuery,
+} from '@/hooks/useCardsQuery'
+import {
+  useLanguagesQuery,
+  usePokemonSetsQuery,
+  useRaritiesQuery,
+  useSeriesQuery,
+  useVariantsQuery,
+} from '@/hooks/useCatalogReferences'
 import { tcgdexImageUrl } from '@/lib/tcgdex'
+import type { CardsSearch } from '@/router'
 import type { Card } from '@/types/card'
-
-const LANGUAGES: { value: 'fr' | 'en'; label: string }[] = [
-  { value: 'fr', label: 'Français' },
-  { value: 'en', label: 'English' },
-]
-
-const VARIANTS: {
-  value: 'normal' | 'reverse' | 'holo' | 'firstEdition' | 'wPromo'
-  label: string
-}[] = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'reverse', label: 'Reverse' },
-  { value: 'holo', label: 'Holo' },
-  { value: 'firstEdition', label: '1st Edition' },
-  { value: 'wPromo', label: 'Promo' },
-]
-
-const ALL_VALUE = '__all__'
+import type { OwnedCard } from '@/types/ownedCard'
+import { pickSetName } from '@/types/pokemonSet'
+import { pickRarityName } from '@/types/rarity'
+import { pickSerieName } from '@/types/serie'
 
 export function CardsPage() {
   const search = useSearch({ from: '/cards' })
   const navigate = useNavigate({ from: '/cards' })
 
-  const filters = {
-    name: search.q ?? '',
-    setId: search.setId ?? '',
-    language: search.language ?? '',
-    variant: search.variant ?? '',
+  const seriesQuery = useSeriesQuery()
+  const setsQuery = usePokemonSetsQuery(search.serie)
+  const raritiesQuery = useRaritiesQuery()
+  const variantsQuery = useVariantsQuery()
+  const languagesQuery = useLanguagesQuery()
+
+  const [searchInput, setSearchInput] = useState(search.q ?? '')
+  useEffect(() => setSearchInput(search.q ?? ''), [search.q])
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      const trimmed = searchInput.trim()
+      if (trimmed === (search.q ?? '')) return
+      void navigate({
+        search: (prev) => ({ ...prev, q: trimmed === '' ? undefined : trimmed, page: 1 }),
+      })
+    }, 300)
+    return () => window.clearTimeout(id)
+  }, [searchInput, search.q, navigate])
+
+  const filtersComplete = !!search.serie && !!search.set
+  const filters: CardFilters = {
+    serieId: search.serie,
+    setId: search.set,
+    language: search.language,
+    variants: search.variants,
+    rarities: search.rarities,
+    search: search.q,
   }
 
-  const { data, isLoading, isError, error, isPlaceholderData } = useCardsQuery(search.page, {
-    name: filters.name,
-    setId: filters.setId,
-    language: filters.language,
-    variant: filters.variant,
-  })
+  const cardsQuery = useCardsQuery(search.page, filters, filtersComplete)
+  const ownedQuery = useOwnedCardsBySetQuery(search.set, search.language)
 
-  const totalItems = data?.totalItems ?? 0
+  const totalItems = cardsQuery.data?.totalItems ?? 0
   const totalPages = Math.max(1, Math.ceil(totalItems / CARDS_PER_PAGE))
-  const cards = data?.member ?? []
-  const hasActiveFilters =
-    Boolean(search.q) ||
-    Boolean(search.setId) ||
-    Boolean(search.language) ||
-    Boolean(search.variant)
+  const allCards = cardsQuery.data?.member ?? []
+  const ownedCards = ownedQuery.data?.member ?? []
+
+  const masterOn = !!search.master
+
+  const ownedByCardId = useMemo(() => {
+    const map = new Map<string, OwnedCard[]>()
+    for (const oc of ownedCards) {
+      const arr = map.get(oc.card.id) ?? []
+      arr.push(oc)
+      map.set(oc.card.id, arr)
+    }
+    return map
+  }, [ownedCards])
+
+  const displayCards = useMemo(() => {
+    if (masterOn) return allCards.map((c) => ({ representative: c, variants: [c] }))
+    // Aggregate by (numberInSet, language) — keep one row, list variants.
+    const groups = new Map<string, { representative: Card; variants: Card[] }>()
+    for (const card of allCards) {
+      const key = `${card.numberInSet}|${card.language}`
+      const existing = groups.get(key)
+      if (existing) {
+        existing.variants.push(card)
+        if (card.variant === 'normal') existing.representative = card
+      } else {
+        groups.set(key, { representative: card, variants: [card] })
+      }
+    }
+    return [...groups.values()]
+  }, [allCards, masterOn])
 
   const updateSearch = (next: Partial<typeof search>) => {
-    void navigate({
-      search: (prev) => ({ ...prev, ...next, page: next.page ?? 1 }),
-    })
+    void navigate({ search: (prev) => ({ ...prev, ...next, page: next.page ?? 1 }) })
+  }
+
+  const [bulkMode, setBulkMode] = useState(false)
+  const [bulkSelection, setBulkSelection] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!bulkMode) setBulkSelection(new Set())
+  }, [bulkMode])
+
+  const addOwned = useAddOwnedCardMutation()
+
+  const bulkAdd = () => {
+    const ids = [...bulkSelection]
+    if (ids.length === 0) return
+    let done = 0
+    let errors = 0
+    for (const cardIri of ids) {
+      addOwned.mutate(
+        { cardIri, condition: 'NM' },
+        {
+          onSuccess: () => {
+            done += 1
+            if (done + errors === ids.length) {
+              toast.success(`${done} carte${done > 1 ? 's' : ''} ajoutée${done > 1 ? 's' : ''}`)
+              setBulkSelection(new Set())
+              setBulkMode(false)
+            }
+          },
+          onError: () => {
+            errors += 1
+            if (done + errors === ids.length) {
+              toast.error(`${errors} échec${errors > 1 ? 's' : ''} sur ${ids.length}`)
+            }
+          },
+        },
+      )
+    }
   }
 
   return (
@@ -79,288 +151,470 @@ export function CardsPage() {
       <div className="space-y-1">
         <h2 className="font-semibold text-2xl tracking-tight">Catalogue Pokémon TCG</h2>
         <p className="text-muted-foreground text-sm">
-          {totalItems > 0
-            ? `${totalItems} cartes ${hasActiveFilters ? 'correspondent aux filtres' : 'synchronisées depuis TCGdex'}.`
-            : 'Aucune carte ne correspond.'}
+          Choisis une série puis un set pour explorer les cartes. Active "Master Set" pour voir
+          chaque variant individuellement.
         </p>
       </div>
 
-      <FiltersBar search={search} hasActiveFilters={hasActiveFilters} onChange={updateSearch} />
+      <FiltersBar
+        search={search}
+        onChange={updateSearch}
+        seriesQuery={seriesQuery}
+        setsQuery={setsQuery}
+        raritiesQuery={raritiesQuery}
+        variantsQuery={variantsQuery}
+        languagesQuery={languagesQuery}
+        searchInput={searchInput}
+        onSearchInputChange={setSearchInput}
+      />
 
-      {isError ? (
-        <ErrorState message={(error as Error).message} />
-      ) : isLoading ? (
-        <CardsGridSkeleton />
-      ) : cards.length === 0 ? (
-        <EmptyState hasActiveFilters={hasActiveFilters} />
-      ) : (
-        <div className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-          <CardsGrid cards={cards} />
+      {!filtersComplete ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-16 text-center">
+          <p className="font-medium">Sélectionne une série et un set pour afficher les cartes.</p>
+          <p className="text-muted-foreground text-sm">
+            La liste devient navigable une fois ces deux filtres choisis.
+          </p>
         </div>
-      )}
+      ) : cardsQuery.isError ? (
+        <ErrorState message={(cardsQuery.error as Error).message} />
+      ) : (
+        <>
+          {masterOn ? (
+            <BulkBar
+              bulkMode={bulkMode}
+              selectionCount={bulkSelection.size}
+              onToggleBulk={() => setBulkMode((v) => !v)}
+              onBulkAdd={bulkAdd}
+              onClearSelection={() => setBulkSelection(new Set())}
+              isPending={addOwned.isPending}
+            />
+          ) : null}
 
-      {totalPages > 1 && (
-        <PaginationBar
-          page={search.page}
-          totalPages={totalPages}
-          disabled={isLoading || isError}
-          onPrev={() => updateSearch({ page: search.page - 1 })}
-          onNext={() => updateSearch({ page: search.page + 1 })}
-        />
+          {cardsQuery.isLoading ? (
+            <CardsGridSkeleton />
+          ) : (
+            <CardsGrid
+              displayCards={displayCards}
+              ownedByCardId={ownedByCardId}
+              masterOn={masterOn}
+              bulkMode={bulkMode}
+              bulkSelection={bulkSelection}
+              onToggleBulkSelection={(cardIri) => {
+                setBulkSelection((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(cardIri)) next.delete(cardIri)
+                  else next.add(cardIri)
+                  return next
+                })
+              }}
+            />
+          )}
+
+          {totalPages > 1 ? (
+            <PaginationBar
+              page={search.page}
+              totalPages={totalPages}
+              disabled={cardsQuery.isLoading}
+              onPrev={() => updateSearch({ page: Math.max(1, search.page - 1) })}
+              onNext={() => updateSearch({ page: Math.min(totalPages, search.page + 1) })}
+            />
+          ) : null}
+        </>
       )}
     </main>
   )
 }
 
-type FiltersBarSearch = {
-  q?: string | undefined
-  setId?: string | undefined
-  language?: 'fr' | 'en' | undefined
-  variant?: 'normal' | 'reverse' | 'holo' | 'firstEdition' | 'wPromo' | undefined
-}
-
-type FiltersBarUpdate = FiltersBarSearch
-
 function FiltersBar({
   search,
-  hasActiveFilters,
   onChange,
+  seriesQuery,
+  setsQuery,
+  raritiesQuery,
+  variantsQuery,
+  languagesQuery,
+  searchInput,
+  onSearchInputChange,
 }: {
-  search: FiltersBarSearch
-  hasActiveFilters: boolean
-  onChange: (next: FiltersBarUpdate) => void
+  search: CardsSearch
+  onChange: (next: Partial<CardsSearch>) => void
+  seriesQuery: ReturnType<typeof useSeriesQuery>
+  setsQuery: ReturnType<typeof usePokemonSetsQuery>
+  raritiesQuery: ReturnType<typeof useRaritiesQuery>
+  variantsQuery: ReturnType<typeof useVariantsQuery>
+  languagesQuery: ReturnType<typeof useLanguagesQuery>
+  searchInput: string
+  onSearchInputChange: (value: string) => void
 }) {
-  const [qInput, setQInput] = useState(search.q ?? '')
-  const [setInput, setSetInput] = useState(search.setId ?? '')
+  const series = seriesQuery.data?.member ?? []
+  const sets = setsQuery.data?.member ?? []
+  const rarities = raritiesQuery.data?.member ?? []
+  const variants = variantsQuery.data ?? []
+  const languages = languagesQuery.data ?? []
+  const lang = search.language ?? 'en'
 
-  // Keep local inputs in sync if the URL changes externally (browser back/forward).
-  useEffect(() => {
-    setQInput(search.q ?? '')
-  }, [search.q])
-  useEffect(() => {
-    setSetInput(search.setId ?? '')
-  }, [search.setId])
+  const toggleVariant = (code: string) => {
+    const current = new Set(search.variants ?? [])
+    if (current.has(code)) current.delete(code)
+    else current.add(code)
+    onChange({ variants: [...current] })
+  }
 
-  // Debounce text inputs so we don't refetch on every keystroke.
-  useEffect(() => {
-    const trimmed = qInput.trim()
-    if (trimmed === (search.q ?? '')) return
-    const id = window.setTimeout(() => {
-      onChange({ q: trimmed === '' ? undefined : trimmed })
-    }, 300)
-    return () => window.clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally narrow deps
-  }, [qInput, onChange, search.q])
-  useEffect(() => {
-    const trimmed = setInput.trim()
-    if (trimmed === (search.setId ?? '')) return
-    const id = window.setTimeout(() => {
-      onChange({ setId: trimmed === '' ? undefined : trimmed })
-    }, 300)
-    return () => window.clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally narrow deps
-  }, [setInput, search.setId, onChange])
-
-  const reset = () => {
-    setQInput('')
-    setSetInput('')
-    onChange({ q: undefined, setId: undefined, language: undefined, variant: undefined })
+  const toggleRarity = (code: string) => {
+    const current = new Set(search.rarities ?? [])
+    if (current.has(code)) current.delete(code)
+    else current.add(code)
+    onChange({ rarities: [...current] })
   }
 
   return (
-    <section
-      aria-label="Filtres"
-      className="grid grid-cols-1 gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
-    >
-      <div className="relative flex flex-col gap-1 lg:col-span-2">
-        <label htmlFor="cards-filter-q" className="font-medium text-muted-foreground text-xs">
-          Recherche
-        </label>
-        <span className="relative">
-          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="cards-filter-q"
-            value={qInput}
-            onChange={(event) => setQInput(event.target.value)}
-            placeholder="Nom de carte (ex. Charizard)"
-            className="pl-8"
-          />
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="cards-filter-set" className="font-medium text-muted-foreground text-xs">
-          Set
-        </label>
-        <Input
-          id="cards-filter-set"
-          value={setInput}
-          onChange={(event) => setSetInput(event.target.value)}
-          placeholder="ex. base1"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <span id="cards-filter-language" className="font-medium text-muted-foreground text-xs">
-          Langue
-        </span>
-        <Select
-          value={search.language ?? ALL_VALUE}
-          onValueChange={(value) =>
-            onChange({ language: value === ALL_VALUE ? undefined : (value as 'fr' | 'en') })
-          }
-        >
-          <SelectTrigger aria-labelledby="cards-filter-language">
-            <SelectValue placeholder="Toutes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>Toutes</SelectItem>
-            {LANGUAGES.map((language) => (
-              <SelectItem key={language.value} value={language.value}>
-                {language.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <span id="cards-filter-variant" className="font-medium text-muted-foreground text-xs">
-          Variant
-        </span>
-        <Select
-          value={search.variant ?? ALL_VALUE}
-          onValueChange={(value) =>
-            onChange({
-              variant:
-                value === ALL_VALUE
-                  ? undefined
-                  : (value as 'normal' | 'reverse' | 'holo' | 'firstEdition' | 'wPromo'),
-            })
-          }
-        >
-          <SelectTrigger aria-labelledby="cards-filter-variant">
-            <SelectValue placeholder="Tous" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>Tous</SelectItem>
-            {VARIANTS.map((variant) => (
-              <SelectItem key={variant.value} value={variant.value}>
-                {variant.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {hasActiveFilters && (
-        <div className="flex items-end sm:col-span-2 lg:col-span-5 lg:justify-end">
-          <Button variant="ghost" size="sm" onClick={reset}>
-            <X />
-            Réinitialiser les filtres
-          </Button>
+    <section className="flex flex-col gap-4 rounded-xl border bg-card p-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-muted-foreground text-xs">Série</span>
+          <Select
+            value={search.serie ?? ''}
+            onValueChange={(value) =>
+              onChange({ serie: value === '' ? undefined : value, set: undefined })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir une série" />
+            </SelectTrigger>
+            <SelectContent>
+              {series.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {pickSerieName(s, lang)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-muted-foreground text-xs">Set</span>
+          <Select
+            value={search.set ?? ''}
+            onValueChange={(value) => onChange({ set: value === '' ? undefined : value })}
+            disabled={!search.serie}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={search.serie ? 'Choisir un set' : 'Choisir une série'} />
+            </SelectTrigger>
+            <SelectContent>
+              {sets.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {pickSetName(s, lang)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-muted-foreground text-xs">Langue</span>
+          <Select
+            value={search.language ?? ''}
+            onValueChange={(value) => onChange({ language: value === '' ? undefined : value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Toutes" />
+            </SelectTrigger>
+            <SelectContent>
+              {languages.map((l) => (
+                <SelectItem key={l.code} value={l.code}>
+                  {l.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="relative flex flex-col gap-1">
+          <span className="font-medium text-muted-foreground text-xs">Recherche</span>
+          <span className="relative">
+            <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchInput}
+              onChange={(event) => onSearchInputChange(event.target.value)}
+              placeholder="Nom, numéro, set, série…"
+              className="pl-8"
+            />
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-muted-foreground text-xs">Variants</span>
+          <div className="flex flex-wrap gap-1">
+            {variants.map((v) => {
+              const active = (search.variants ?? []).includes(v.code)
+              return (
+                <button
+                  type="button"
+                  key={v.code}
+                  onClick={() => toggleVariant(v.code)}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                    active
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-muted-foreground text-xs">Raretés</span>
+          <div className="flex max-w-xl flex-wrap gap-1">
+            {rarities.map((r) => {
+              const active = (search.rarities ?? []).includes(r.code)
+              return (
+                <button
+                  type="button"
+                  key={r.code}
+                  onClick={() => toggleRarity(r.code)}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                    active
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:bg-accent'
+                  }`}
+                >
+                  {pickRarityName(r, lang)}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <label className="ml-auto flex items-center gap-2 self-end text-sm">
+          <input
+            type="checkbox"
+            checked={!!search.master}
+            onChange={(event) => onChange({ master: event.target.checked || undefined })}
+            className="size-4"
+          />
+          <span>Master Set (un row par variant + cocher pour ajouter)</span>
+        </label>
+      </div>
     </section>
   )
 }
 
-function CardsGrid({ cards }: { cards: Card[] }) {
+function BulkBar({
+  bulkMode,
+  selectionCount,
+  onToggleBulk,
+  onBulkAdd,
+  onClearSelection,
+  isPending,
+}: {
+  bulkMode: boolean
+  selectionCount: number
+  onToggleBulk: () => void
+  onBulkAdd: () => void
+  onClearSelection: () => void
+  isPending: boolean
+}) {
   return (
-    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-      {cards.map((card) => (
-        <li key={card['@id']}>
-          <UICard className="h-full overflow-hidden">
-            <div className="aspect-[5/7] w-full bg-muted">
-              {card.imageUrl ? (
-                <img
-                  src={tcgdexImageUrl(card.imageUrl, 'high', 'webp')}
-                  alt={card.name}
-                  loading="lazy"
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground text-xs">
-                  no image
-                </div>
-              )}
-            </div>
-            <CardHeader className="gap-1 p-4">
-              <CardTitle className="line-clamp-1">{card.name}</CardTitle>
-              <CardDescription>
-                {card.setId} · #{card.numberInSet}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-1 p-4 pt-0">
-              <Tag>{card.variant}</Tag>
-              <Tag>{card.language}</Tag>
-              <Tag>{card.rarity}</Tag>
-            </CardContent>
-          </UICard>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+      <Button variant={bulkMode ? 'default' : 'outline'} size="sm" onClick={onToggleBulk}>
+        {bulkMode ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
+        {bulkMode ? 'Mode bulk actif' : 'Activer bulk select'}
+      </Button>
+      {bulkMode ? (
+        <>
+          <span className="text-muted-foreground text-xs">
+            {selectionCount} carte{selectionCount > 1 ? 's' : ''} sélectionnée
+            {selectionCount > 1 ? 's' : ''}
+          </span>
+          <Button size="sm" disabled={selectionCount === 0 || isPending} onClick={onBulkAdd}>
+            {isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            Ajouter à la collection (NM)
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onClearSelection}
+            disabled={selectionCount === 0}
+          >
+            <X className="size-4" />
+            Vider la sélection
+          </Button>
+        </>
+      ) : null}
+    </div>
   )
 }
 
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 font-medium text-muted-foreground text-xs">
-      {children}
-    </span>
-  )
-}
-
-function CardsGridSkeleton() {
-  return (
-    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-      {Array.from({ length: CARDS_PER_PAGE }, (_unused, i) => i).map((idx) => (
-        <li key={idx}>
-          <UICard className="h-full overflow-hidden">
-            <Skeleton className="aspect-[5/7] w-full rounded-none" />
-            <div className="space-y-2 p-4">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-              <div className="flex gap-1 pt-2">
-                <Skeleton className="h-5 w-12" />
-                <Skeleton className="h-5 w-10" />
-              </div>
-            </div>
-          </UICard>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
-  if (hasActiveFilters) {
+function CardsGrid({
+  displayCards,
+  ownedByCardId,
+  masterOn,
+  bulkMode,
+  bulkSelection,
+  onToggleBulkSelection,
+}: {
+  displayCards: { representative: Card; variants: Card[] }[]
+  ownedByCardId: Map<string, OwnedCard[]>
+  masterOn: boolean
+  bulkMode: boolean
+  bulkSelection: Set<string>
+  onToggleBulkSelection: (cardIri: string) => void
+}) {
+  if (displayCards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-16 text-center">
-        <p className="font-medium">Aucune carte ne correspond à ces filtres.</p>
-        <p className="text-muted-foreground text-sm">Essaie de relâcher un critère.</p>
+        <p className="font-medium">Aucune carte ne correspond aux filtres.</p>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-16 text-center">
-      <p className="font-medium">Le catalogue est vide.</p>
-      <p className="max-w-md text-muted-foreground text-sm">
-        Lance une synchronisation pour importer les cartes depuis TCGdex. En attendant la slice Sync
-        UI : <code>bin/console pokefolder:sync-set base1</code> puis{' '}
-        <code>bin/console messenger:consume async</code>.
-      </p>
-    </div>
+    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      {displayCards.map(({ representative, variants }) => (
+        <li key={`${representative.id}-${variants.length}`}>
+          <CatalogCardCell
+            representative={representative}
+            variants={variants}
+            ownedByCardId={ownedByCardId}
+            masterOn={masterOn}
+            bulkMode={bulkMode}
+            bulkChecked={bulkSelection.has(representative['@id'])}
+            onToggleBulk={onToggleBulkSelection}
+          />
+        </li>
+      ))}
+    </ul>
   )
 }
 
-function ErrorState({ message }: { message: string }) {
+function CatalogCardCell({
+  representative,
+  variants,
+  ownedByCardId,
+  masterOn,
+  bulkMode,
+  bulkChecked,
+  onToggleBulk,
+}: {
+  representative: Card
+  variants: Card[]
+  ownedByCardId: Map<string, OwnedCard[]>
+  masterOn: boolean
+  bulkMode: boolean
+  bulkChecked: boolean
+  onToggleBulk: (cardIri: string) => void
+}) {
+  const owned = ownedByCardId.get(representative.id) ?? []
+  const ownedCount = owned.length
+  const sameCondition = owned.every((oc) => oc.condition === 'NM')
+  const isIndeterminate = ownedCount > 1 || (ownedCount === 1 && !sameCondition)
+
+  const addOwned = useAddOwnedCardMutation()
+  const deleteOwned = useDeleteOwnedCardSimpleMutation()
+
+  const handleCheckbox = () => {
+    if (ownedCount === 0) {
+      addOwned.mutate(
+        { cardIri: representative['@id'], condition: 'NM' },
+        {
+          onSuccess: () => toast.success('Carte ajoutée'),
+          onError: (e) => toast.error((e as Error).message),
+        },
+      )
+    } else if (ownedCount === 1 && sameCondition && owned[0]) {
+      const target = owned[0]
+      deleteOwned.mutate(target.id, {
+        onSuccess: () => toast.success('Carte retirée'),
+        onError: (e) => toast.error((e as Error).message),
+      })
+    }
+  }
+
+  const checkboxLabel =
+    ownedCount === 0
+      ? 'Ajouter à la collection'
+      : isIndeterminate
+        ? `${ownedCount} exemplaires — voir détail`
+        : 'Retirer de la collection'
+
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-destructive/40 bg-destructive/5 p-6">
-      <p className="font-medium text-destructive">Impossible de charger le catalogue.</p>
-      <p className="text-sm">{message}</p>
-    </div>
+    <UICard className="flex h-full flex-col overflow-hidden">
+      <div className="relative aspect-[5/7] bg-muted">
+        {representative.imageUrl ? (
+          <img
+            src={tcgdexImageUrl(representative.imageUrl, 'low')}
+            alt={representative.name}
+            className="size-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-center text-muted-foreground text-xs">
+            {representative.name}
+          </div>
+        )}
+        {!masterOn && variants.length > 1 ? (
+          <span className="absolute top-1 right-1 rounded-full bg-background/90 px-1.5 py-0.5 font-medium text-[10px] uppercase shadow-sm">
+            ×{variants.length} variants
+          </span>
+        ) : null}
+      </div>
+      <CardContent className="flex flex-1 flex-col gap-2 p-3">
+        <div className="space-y-0.5">
+          <p className="line-clamp-1 font-medium text-sm">{representative.name}</p>
+          <p className="text-muted-foreground text-xs">
+            #{representative.numberInSet} · {representative.variant} · {representative.language}
+          </p>
+        </div>
+        {masterOn ? (
+          <div className="mt-auto flex items-center gap-2">
+            {bulkMode ? (
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={bulkChecked}
+                  onChange={() => onToggleBulk(representative['@id'])}
+                  className="size-4"
+                />
+                <span>Sélectionner</span>
+              </label>
+            ) : isIndeterminate ? (
+              <Link
+                to="/collection/cards/$cardId"
+                params={{ cardId: representative.id }}
+                className="text-primary text-xs underline"
+                title={checkboxLabel}
+              >
+                ×{ownedCount} possédées — voir
+              </Link>
+            ) : (
+              <label className="flex items-center gap-2 text-xs" title={checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={ownedCount === 1}
+                  onChange={handleCheckbox}
+                  disabled={addOwned.isPending || deleteOwned.isPending}
+                  className="size-4"
+                />
+                <span>{ownedCount === 1 ? 'Possédée' : 'Ajouter (NM)'}</span>
+              </label>
+            )}
+          </div>
+        ) : null}
+      </CardContent>
+    </UICard>
+  )
+}
+
+function CardsGridSkeleton() {
+  return (
+    <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      {Array.from({ length: 12 }, (_unused, i) => i).map((idx) => (
+        <li key={idx}>
+          <Skeleton className="aspect-[5/7] w-full" />
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -378,32 +632,29 @@ function PaginationBar({
   onNext: () => void
 }) {
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-between gap-3 border-t pt-4">
-      <p className="text-muted-foreground text-sm">
-        Page <span className="font-medium text-foreground">{page}</span> sur {totalPages}
-      </p>
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={disabled || page <= 1}
-          onClick={onPrev}
-          aria-label="Page précédente"
-        >
-          <ChevronLeft />
-          Précédent
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={disabled || page >= totalPages}
-          onClick={onNext}
-          aria-label="Page suivante"
-        >
-          Suivant
-          <ChevronRight />
-        </Button>
-      </div>
-    </nav>
+    <div className="flex items-center justify-center gap-2">
+      <Button variant="ghost" size="icon" onClick={onPrev} disabled={page <= 1 || disabled}>
+        <ChevronLeft />
+      </Button>
+      <span className="text-sm">
+        Page {page} / {totalPages}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onNext}
+        disabled={page >= totalPages || disabled}
+      >
+        <ChevronRight />
+      </Button>
+    </div>
+  )
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-destructive text-sm">
+      {message}
+    </div>
   )
 }

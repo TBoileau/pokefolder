@@ -32,13 +32,13 @@ const indexRoute = createRoute({
 
 const cardsSearchSchema = z.object({
   page: z.coerce.number().int().positive().catch(1),
+  serie: z.string().optional().catch(undefined),
+  set: z.string().optional().catch(undefined),
+  language: z.string().optional().catch(undefined),
+  variants: z.array(z.string()).optional().catch(undefined),
+  rarities: z.array(z.string()).optional().catch(undefined),
   q: z.string().optional().catch(undefined),
-  setId: z.string().optional().catch(undefined),
-  language: z.enum(['fr', 'en']).optional().catch(undefined),
-  variant: z
-    .enum(['normal', 'reverse', 'holo', 'firstEdition', 'wPromo'])
-    .optional()
-    .catch(undefined),
+  master: z.coerce.boolean().optional().catch(undefined),
 })
 
 export type CardsSearch = z.infer<typeof cardsSearchSchema>
