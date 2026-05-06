@@ -1,6 +1,8 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+import { z } from 'zod'
 
+import { CardsPage } from '@/pages/CardsPage'
 import { HomePage } from '@/pages/HomePage'
 
 const rootRoute = createRootRoute({
@@ -18,7 +20,18 @@ const indexRoute = createRoute({
   component: HomePage,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute])
+const cardsSearchSchema = z.object({
+  page: z.coerce.number().int().positive().catch(1),
+})
+
+const cardsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/cards',
+  component: CardsPage,
+  validateSearch: cardsSearchSchema,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, cardsRoute])
 
 export const router = createRouter({ routeTree })
 

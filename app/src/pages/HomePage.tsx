@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { Library } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -22,9 +23,11 @@ export function HomePage() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Button>Action principale</Button>
-          <Button variant="secondary">Action secondaire</Button>
-          <Button variant="outline">Action neutre</Button>
+          <Button asChild>
+            <Link to="/cards" search={{ page: 1 }}>
+              Parcourir le catalogue
+            </Link>
+          </Button>
         </div>
       </main>
     </div>
