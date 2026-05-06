@@ -10,15 +10,16 @@ This document defines **what things are** and **how they relate**. Architectural
 
 A reference entry from the Pokémon TCG catalog, sourced from [TCGdex](https://tcgdex.dev). A `Card` is **catalog data**, not a physical object you own — it is the description of a card that exists in the world.
 
-**Functional identity** (uniqueness key): the tuple `(setId, numberInSet, variant, language)`. Two `Card` rows are the same card iff all four match.
+**Functional identity** (uniqueness key): the tuple `(set, numberInSet, variant, language)`. Two `Card` rows are the same card iff all four match.
 
 **Properties**:
 
-- `setId` — the TCGdex set identifier (e.g. `swsh1`, `base1`)
+- `set` — FK to `Set` (the set this card belongs to)
 - `numberInSet` — the printed number within the set (e.g. `4` for Charizard in Base Set)
-- `variant` — the variant identifier (e.g. `holo`, `reverse`, `full-art`, `1st-edition`, `promo`); a "variant" here is whatever TCGdex models as a distinct printing
-- `language` — ISO language code (`fr`, `en`, `ja`, `de`, `it`, `es`, …)
-- `name`, `rarity`, `imageUrl`, plus other catalog metadata mirrored from TCGdex
+- `variant` — value of the `Variant` enum
+- `language` — value of the `Language` enum
+- `rarity` — FK to `Rarity` (nullable; some cards have no rarity)
+- `name`, `imageUrl`, plus other catalog metadata mirrored from TCGdex
 
 **Mutability**: `Card` is read-only from the application's perspective. It only changes when a sync from TCGdex updates it.
 
@@ -103,19 +104,92 @@ These invariants are enforced by the `BinderPlacementService` (see PRD #1, slice
 
 ---
 
+## Serie
+
+A top-level grouping of Pokémon TCG sets (e.g. "Sword & Shield", "Scarlet & Violet", "Base"). Mirrors TCGdex's serie concept and owns the `Set`s it contains.
+
+**Functional identity**: `id` (TCGdex serie code, e.g. `swsh`, `base`).
+
+**Properties**:
+
+- `id` — primary key, the TCGdex serie code
+- `logo` — public URL to the serie logo (nullable)
+- `releaseDate` — ISO date of the serie's first release (nullable)
+- `translations` — one row per configured language (see `Translation`)
+
+---
+
 ## Set
 
-A Pokémon TCG set (e.g. "Base Set", "Sword & Shield", "Scarlet & Violet"). Used as a foreign concept (`Card.setId` references a TCGdex set ID). Sets themselves are not modelled as a first-class entity in the local schema — the catalog lives in TCGdex.
+A Pokémon TCG set (e.g. "Base Set", "Sword & Shield Base", "Scarlet & Violet Base"). Belongs to exactly one `Serie`.
+
+**Functional identity**: `id` (TCGdex set code, e.g. `base1`, `swsh1`, `sv01`).
+
+**Properties**:
+
+- `id` — primary key, the TCGdex set code
+- `serie` — FK to `Serie`
+- `logo`, `symbol` — public URLs (nullable)
+- `releaseDate` — ISO date (nullable)
+- `cardCountTotal`, `cardCountOfficial` — totals reported by TCGdex
+- `legalStandard`, `legalExpanded` — booleans, tournament legality
+- `tcgOnlineId` — optional ID for the historical TCG Online client
+- `translations` — one row per configured language (name + abbreviations)
+
+---
+
+## Rarity
+
+A card rarity (e.g. "Common", "Uncommon", "Rare Holo", "Promo"). Rarity strings come from TCGdex as raw labels per language; we deduplicate them by a stable slug.
+
+**Functional identity**: `code` — slugified label (e.g. `common`, `rare-holo`, `promo`). Stable across languages; the human label lives in `translations`.
+
+**Properties**:
+
+- `code` — primary key, slug derived from the canonical English label
+- `translations` — one row per configured language
+
+---
+
+## Variant
+
+The printing variant of a `Card` (e.g. normal, reverse holo, holo, first edition, world promo). Closed enum, mirrors TCGdex's `Variants` model:
+
+| Code | Meaning |
+|---|---|
+| `normal` | Standard printing |
+| `reverse` | Reverse holofoil |
+| `holo` | Holofoil |
+| `firstEdition` | 1st edition |
+| `wPromo` | World Promo (TCGdex's promo bucket) |
+
+Not a Doctrine entity. Exposed read-only at `/api/variants` so the front can render selects with the right labels.
+
+---
+
+## Language
+
+ISO language code that a `Card` exists in. Closed enum, restricted to the languages configured in `pokefolder.catalog.languages` (currently `en`, `fr`).
+
+Not a Doctrine entity. Exposed read-only at `/api/languages` so the front can render selects.
+
+---
+
+## Translation
+
+A row in a sister table holding the localized form of a `Serie`, `Set`, or `Rarity`. Composite primary key `(parent_id, language)`. There is one translation table per parent type (`serie_translation`, `set_translation`, `rarity_translation`). Translations are populated only for configured languages and are merged on sync (a sync in `fr` does not erase an existing `en` translation). See ADR-0007.
 
 ---
 
 ## Catalog synchronization
 
-The act of pulling Pokémon TCG data from TCGdex into the local database, mapping it to local `Card` rows. Synchronization is:
+The act of pulling Pokémon TCG data from TCGdex into the local database, mapping it to local `Card` rows (and now `Serie`/`Set`/`Rarity` rows). Synchronization is:
 
 - **Manual**: triggered by the user (CLI command or UI action), never automatic
-- **Asynchronous**: dispatched per set onto a RabbitMQ queue, processed by a worker (see [ADR-0001](docs/adr/0001-rabbitmq-over-doctrine-transport.md))
-- **Idempotent**: re-syncing a set updates existing `Card` rows in place, never duplicates
+- **Asynchronous**: dispatched onto a RabbitMQ queue, processed by a worker (see [ADR-0001](docs/adr/0001-rabbitmq-over-doctrine-transport.md))
+- **Three-level decomposition**: `SyncSeries(language)` → `SyncSets(serieId, language)` → `SyncCards(setId, language)`. One AMQP message per unit at each level.
+- **Skip-if-exists by default**: a unit (Serie/Set/Card row) already present in the configured language is skipped without re-fetching its detail. A `force` flag overrides this and refreshes upstream changes.
+- **Idempotent**: any re-run is safe — no duplicates, no orphaned rows.
 
 The synchronization is one-way: TCGdex → local DB. The app never writes back to TCGdex.
 

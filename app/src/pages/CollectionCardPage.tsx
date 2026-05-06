@@ -1,5 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router'
-import { ArrowLeft, Library, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -49,97 +49,86 @@ export function CollectionCardPage() {
   const ownedCopies = ownedQuery.data?.member ?? []
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-4">
-          <Link to="/" className="flex items-center gap-3 text-foreground">
-            <Library className="size-6 text-primary" />
-            <h1 className="font-semibold text-lg tracking-tight">pokefolder</h1>
-          </Link>
-        </div>
-      </header>
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
+      <Button variant="ghost" size="sm" asChild className="self-start">
+        <Link to="/collection" search={{ page: 1 }}>
+          <ArrowLeft />
+          Retour à la collection
+        </Link>
+      </Button>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
-        <Button variant="ghost" size="sm" asChild className="self-start">
-          <Link to="/collection" search={{ page: 1 }}>
-            <ArrowLeft />
-            Retour à la collection
-          </Link>
-        </Button>
-
-        {cardQuery.isLoading ? (
-          <Skeleton className="h-40 w-full" />
-        ) : card ? (
-          <UICard>
-            <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-[200px_1fr]">
-              <div className="aspect-[5/7] w-full bg-muted">
-                {card.imageUrl ? (
-                  <img
-                    src={tcgdexImageUrl(card.imageUrl, 'high', 'webp')}
-                    alt={card.name}
-                    className="h-full w-full object-contain"
-                  />
-                ) : null}
-              </div>
-              <div className="flex flex-col gap-2">
-                <h2 className="font-semibold text-2xl tracking-tight">{card.name}</h2>
-                <p className="text-muted-foreground text-sm">
-                  {card.setId} · #{card.numberInSet} · {card.variant} · {card.language}
-                </p>
-                <p className="text-muted-foreground text-xs">{card.rarity}</p>
-              </div>
-            </div>
-          </UICard>
-        ) : (
-          <p className="text-destructive">Carte introuvable.</p>
-        )}
-
+      {cardQuery.isLoading ? (
+        <Skeleton className="h-40 w-full" />
+      ) : card ? (
         <UICard>
-          <CardHeader>
-            <CardTitle>Exemplaires possédés</CardTitle>
-            <CardDescription>
-              Chaque ligne représente une carte physique. Modifier la condition met à jour
-              l'exemplaire correspondant.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {ownedQuery.isLoading ? (
-              <Skeleton className="h-20 w-full" />
-            ) : ownedCopies.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Aucun exemplaire de cette carte dans la collection.
-              </p>
-            ) : (
-              ownedCopies.map((copy, index) => (
-                <CopyRow
-                  key={copy.id}
-                  index={index + 1}
-                  copy={copy}
-                  isUpdating={
-                    updateCondition.isPending && updateCondition.variables?.ownedCardId === copy.id
-                  }
-                  isDeleting={deleteOwnedCard.isPending && deleteOwnedCard.variables === copy.id}
-                  onChangeCondition={(condition) =>
-                    updateCondition.mutate({ ownedCardId: copy.id, condition })
-                  }
-                  onDelete={() => deleteOwnedCard.mutate(copy.id)}
+          <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-[200px_1fr]">
+            <div className="aspect-[5/7] w-full bg-muted">
+              {card.imageUrl ? (
+                <img
+                  src={tcgdexImageUrl(card.imageUrl, 'high', 'webp')}
+                  alt={card.name}
+                  className="h-full w-full object-contain"
                 />
-              ))
-            )}
-            {updateCondition.isError ? (
-              <p className="text-destructive text-sm">
-                Échec de la mise à jour : {(updateCondition.error as Error).message}
+              ) : null}
+            </div>
+            <div className="flex flex-col gap-2">
+              <h2 className="font-semibold text-2xl tracking-tight">{card.name}</h2>
+              <p className="text-muted-foreground text-sm">
+                {card.setId} · #{card.numberInSet} · {card.variant} · {card.language}
               </p>
-            ) : null}
-            {deleteOwnedCard.isError ? (
-              <p className="text-destructive text-sm">
-                Échec de la suppression : {(deleteOwnedCard.error as Error).message}
-              </p>
-            ) : null}
-          </CardContent>
+              <p className="text-muted-foreground text-xs">{card.rarity}</p>
+            </div>
+          </div>
         </UICard>
-      </main>
-    </div>
+      ) : (
+        <p className="text-destructive">Carte introuvable.</p>
+      )}
+
+      <UICard>
+        <CardHeader>
+          <CardTitle>Exemplaires possédés</CardTitle>
+          <CardDescription>
+            Chaque ligne représente une carte physique. Modifier la condition met à jour
+            l'exemplaire correspondant.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {ownedQuery.isLoading ? (
+            <Skeleton className="h-20 w-full" />
+          ) : ownedCopies.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Aucun exemplaire de cette carte dans la collection.
+            </p>
+          ) : (
+            ownedCopies.map((copy, index) => (
+              <CopyRow
+                key={copy.id}
+                index={index + 1}
+                copy={copy}
+                isUpdating={
+                  updateCondition.isPending && updateCondition.variables?.ownedCardId === copy.id
+                }
+                isDeleting={deleteOwnedCard.isPending && deleteOwnedCard.variables === copy.id}
+                onChangeCondition={(condition) =>
+                  updateCondition.mutate({ ownedCardId: copy.id, condition })
+                }
+                onDelete={() => deleteOwnedCard.mutate(copy.id)}
+              />
+            ))
+          )}
+          {updateCondition.isError ? (
+            <p className="text-destructive text-sm">
+              Échec de la mise à jour : {(updateCondition.error as Error).message}
+            </p>
+          ) : null}
+          {deleteOwnedCard.isError ? (
+            <p className="text-destructive text-sm">
+              Échec de la suppression : {(deleteOwnedCard.error as Error).message}
+            </p>
+          ) : null}
+        </CardContent>
+      </UICard>
+    </main>
   )
 }
 

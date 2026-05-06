@@ -1,5 +1,5 @@
-import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, Library, Search, X } from 'lucide-react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -75,53 +75,40 @@ export function CardsPage() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-4">
-          <Link to="/" className="flex items-center gap-3 text-foreground">
-            <Library className="size-6 text-primary" />
-            <h1 className="font-semibold text-lg tracking-tight">pokefolder</h1>
-          </Link>
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
+      <div className="space-y-1">
+        <h2 className="font-semibold text-2xl tracking-tight">Catalogue Pokémon TCG</h2>
+        <p className="text-muted-foreground text-sm">
+          {totalItems > 0
+            ? `${totalItems} cartes ${hasActiveFilters ? 'correspondent aux filtres' : 'synchronisées depuis TCGdex'}.`
+            : 'Aucune carte ne correspond.'}
+        </p>
+      </div>
+
+      <FiltersBar search={search} hasActiveFilters={hasActiveFilters} onChange={updateSearch} />
+
+      {isError ? (
+        <ErrorState message={(error as Error).message} />
+      ) : isLoading ? (
+        <CardsGridSkeleton />
+      ) : cards.length === 0 ? (
+        <EmptyState hasActiveFilters={hasActiveFilters} />
+      ) : (
+        <div className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+          <CardsGrid cards={cards} />
         </div>
-      </header>
+      )}
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
-        <div className="space-y-1">
-          <h2 className="font-semibold text-2xl tracking-tight">Catalogue Pokémon TCG</h2>
-          <p className="text-muted-foreground text-sm">
-            {totalItems > 0
-              ? `${totalItems} cartes ${hasActiveFilters ? 'correspondent aux filtres' : 'synchronisées depuis TCGdex'}.`
-              : 'Aucune carte ne correspond.'}
-          </p>
-        </div>
-
-        <FiltersBar search={search} hasActiveFilters={hasActiveFilters} onChange={updateSearch} />
-
-        {isError ? (
-          <ErrorState message={(error as Error).message} />
-        ) : isLoading ? (
-          <CardsGridSkeleton />
-        ) : cards.length === 0 ? (
-          <EmptyState hasActiveFilters={hasActiveFilters} />
-        ) : (
-          <div
-            className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}
-          >
-            <CardsGrid cards={cards} />
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <PaginationBar
-            page={search.page}
-            totalPages={totalPages}
-            disabled={isLoading || isError}
-            onPrev={() => updateSearch({ page: search.page - 1 })}
-            onNext={() => updateSearch({ page: search.page + 1 })}
-          />
-        )}
-      </main>
-    </div>
+      {totalPages > 1 && (
+        <PaginationBar
+          page={search.page}
+          totalPages={totalPages}
+          disabled={isLoading || isError}
+          onPrev={() => updateSearch({ page: search.page - 1 })}
+          onNext={() => updateSearch({ page: search.page + 1 })}
+        />
+      )}
+    </main>
   )
 }
 
