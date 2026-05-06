@@ -1,4 +1,6 @@
 {
+    "name": "tboileau/pokefolder-api",
+    "description": "pokefolder API — Pokémon TCG collection manager (Symfony + API Platform).",
     "type": "project",
     "license": "proprietary",
     "minimum-stability": "stable",
