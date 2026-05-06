@@ -2,22 +2,24 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Catalog;
+namespace App\Tests\UseCase\Catalog\SyncSet;
 
-use App\Catalog\CatalogSynchronizer;
-use App\Catalog\DTO\TCGdexCard;
-use App\Catalog\DTO\TCGdexSet;
-use App\Catalog\SetNotFoundException;
 use App\Repository\CardRepository;
+use App\Service\Catalog\DTO\TCGdexCard;
+use App\Service\Catalog\DTO\TCGdexSet;
+use App\Tests\Service\Catalog\Provider\InMemoryTCGdexProvider;
+use App\UseCase\Catalog\SyncSet\Handler;
+use App\UseCase\Catalog\SyncSet\Input;
+use App\UseCase\Catalog\SyncSet\SetNotFoundException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
-final class CatalogSynchronizerTest extends KernelTestCase
+final class HandlerTest extends KernelTestCase
 {
     private EntityManagerInterface $em;
     private CardRepository $cards;
     private InMemoryTCGdexProvider $provider;
-    private CatalogSynchronizer $synchronizer;
+    private Handler $handler;
 
     protected function setUp(): void
     {
@@ -27,7 +29,7 @@ final class CatalogSynchronizerTest extends KernelTestCase
         $this->em = $container->get(EntityManagerInterface::class);
         $this->cards = $container->get(CardRepository::class);
         $this->provider = new InMemoryTCGdexProvider();
-        $this->synchronizer = new CatalogSynchronizer(
+        $this->handler = new Handler(
             provider: $this->provider,
             em: $this->em,
             cards: $this->cards,
@@ -56,11 +58,11 @@ final class CatalogSynchronizerTest extends KernelTestCase
             ),
         ]));
 
-        $report = $this->synchronizer->syncSet('base1');
+        $output = ($this->handler)(new Input('base1'));
 
-        self::assertSame(4, $report->created);
-        self::assertSame(0, $report->updated);
-        self::assertSame(0, $report->unchanged);
+        self::assertSame(4, $output->created);
+        self::assertSame(0, $output->updated);
+        self::assertSame(0, $output->unchanged);
         self::assertCount(4, $this->cards->findAll());
     }
 
@@ -70,9 +72,9 @@ final class CatalogSynchronizerTest extends KernelTestCase
             new TCGdexCard('4', 'Charizard', 'Rare Holo', null, ['normal']),
         ]));
 
-        $first = $this->synchronizer->syncSet('base1');
+        $first = ($this->handler)(new Input('base1'));
         $this->em->clear();
-        $second = $this->synchronizer->syncSet('base1');
+        $second = ($this->handler)(new Input('base1'));
 
         self::assertSame(1, $first->created);
         self::assertSame(0, $second->created);
@@ -86,16 +88,16 @@ final class CatalogSynchronizerTest extends KernelTestCase
         $this->provider->register('base1', 'en', new TCGdexSet('base1', [
             new TCGdexCard('4', 'Charizard', 'Rare', null, ['normal']),
         ]));
-        $this->synchronizer->syncSet('base1');
+        ($this->handler)(new Input('base1'));
         $this->em->clear();
 
         $this->provider->register('base1', 'en', new TCGdexSet('base1', [
             new TCGdexCard('4', 'Charizard', 'Rare Holo', 'https://example.test/v2', ['normal']),
         ]));
-        $report = $this->synchronizer->syncSet('base1');
+        $output = ($this->handler)(new Input('base1'));
 
-        self::assertSame(0, $report->created);
-        self::assertSame(1, $report->updated);
+        self::assertSame(0, $output->created);
+        self::assertSame(1, $output->updated);
 
         $entity = $this->cards->findByFunctionalIdentity('base1', '4', 'normal', 'en');
         self::assertNotNull($entity);
@@ -110,15 +112,15 @@ final class CatalogSynchronizerTest extends KernelTestCase
         ]));
         // 'fr' deliberately unregistered
 
-        $report = $this->synchronizer->syncSet('base1');
+        $output = ($this->handler)(new Input('base1'));
 
-        self::assertSame(1, $report->created);
+        self::assertSame(1, $output->created);
         self::assertCount(1, $this->cards->findAll());
     }
 
     public function testRaisesSetNotFoundWhenAbsentInEveryLanguage(): void
     {
         $this->expectException(SetNotFoundException::class);
-        $this->synchronizer->syncSet('does-not-exist');
+        ($this->handler)(new Input('does-not-exist'));
     }
 }

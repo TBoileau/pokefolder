@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Catalog\Provider;
+namespace App\Service\Catalog\Provider;
 
-use App\Catalog\DTO\TCGdexSet;
+use App\Service\Catalog\DTO\TCGdexSet;
 
 /**
  * Read-side abstraction over TCGdex. The application depends on this

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Catalog\DTO;
+namespace App\Service\Catalog\DTO;
 
 final class TCGdexSet
 {

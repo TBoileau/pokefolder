@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Message\SyncSetMessage;
+use App\UseCase\Catalog\SyncSet\Input;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -34,10 +34,10 @@ final class SyncSetCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $setId = (string) $input->getArgument('setId');
 
-        $this->bus->dispatch(new SyncSetMessage($setId));
+        $this->bus->dispatch(new Input($setId));
 
         $io->success(\sprintf(
-            'SyncSetMessage dispatched for set "%s". Run "bin/console messenger:consume async" to process it.',
+            'Sync dispatched for set "%s". Run "bin/console messenger:consume async" to process it.',
             $setId,
         ));
 

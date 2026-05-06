@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Catalog;
+namespace App\Tests\Service\Catalog\Provider;
 
-use App\Catalog\DTO\TCGdexSet;
-use App\Catalog\Provider\TCGdexProvider;
+use App\Service\Catalog\DTO\TCGdexSet;
+use App\Service\Catalog\Provider\TCGdexProvider;
 
 /**
  * Test double: holds set fixtures keyed by (setId, language) and returns

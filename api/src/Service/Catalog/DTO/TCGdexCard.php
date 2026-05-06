@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Catalog\DTO;
+namespace App\Service\Catalog\DTO;
 
 /**
  * Snapshot of a single Pokémon TCG card as returned by TCGdex, with the

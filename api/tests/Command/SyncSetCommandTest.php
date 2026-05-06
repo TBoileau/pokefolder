@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Command;
 
-use App\Message\SyncSetMessage;
+use App\UseCase\Catalog\SyncSet\Input;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -29,7 +29,7 @@ final class SyncSetCommandTest extends KernelTestCase
 
         self::assertCount(1, $sent);
         $message = $sent[0]->getMessage();
-        self::assertInstanceOf(SyncSetMessage::class, $message);
+        self::assertInstanceOf(Input::class, $message);
         self::assertSame('base1', $message->setId);
     }
 }
