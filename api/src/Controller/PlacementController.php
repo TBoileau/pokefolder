@@ -12,6 +12,8 @@ use App\Exception\Binder\PositionOutOfBoundsException;
 use App\Exception\Binder\SlotAlreadyOccupiedException;
 use App\UseCase\Binder\PlaceCard\Handler as PlaceCardHandler;
 use App\UseCase\Binder\PlaceCard\Input as PlaceCardInput;
+use App\UseCase\Binder\SuggestPlacement\Handler as SuggestPlacementHandler;
+use App\UseCase\Binder\SuggestPlacement\Input as SuggestPlacementInput;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,8 +30,27 @@ use function is_string;
  */
 final readonly class PlacementController
 {
-    public function __construct(private PlaceCardHandler $placeCardHandler)
+    public function __construct(
+        private PlaceCardHandler $placeCardHandler,
+        private SuggestPlacementHandler $suggestPlacementHandler,
+    ) {
+    }
+
+    #[Route(
+        path: '/api/owned-cards/{id}/suggest-placement',
+        name: 'app_owned_card_suggest_placement',
+        requirements: ['id' => '[0-9a-fA-F-]{36}'],
+        methods: ['POST'],
+    )]
+    public function suggestPlacement(string $id): JsonResponse
     {
+        try {
+            $output = ($this->suggestPlacementHandler)(new SuggestPlacementInput($id));
+        } catch (OwnedCardNotFoundException $ownedCardNotFoundException) {
+            return new JsonResponse(['error' => $ownedCardNotFoundException->getMessage()], Response::HTTP_NOT_FOUND);
+        }
+
+        return new JsonResponse(['binderId' => $output->binderId], Response::HTTP_OK);
     }
 
     #[Route(
