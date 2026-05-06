@@ -10,7 +10,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { ArrowLeft, ChevronLeft, ChevronRight, Library, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -206,97 +206,83 @@ export function BinderViewPage() {
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex min-h-svh flex-col">
-        <header className="border-b">
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-4">
-            <Link to="/" className="flex items-center gap-3 text-foreground">
-              <Library className="size-6 text-primary" />
-              <h1 className="font-semibold text-lg tracking-tight">pokefolder</h1>
-            </Link>
-          </div>
-        </header>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
+        <Button variant="ghost" size="sm" asChild className="self-start">
+          <Link to="/binders">
+            <ArrowLeft />
+            Retour aux classeurs
+          </Link>
+        </Button>
 
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
-          <Button variant="ghost" size="sm" asChild className="self-start">
-            <Link to="/binders">
-              <ArrowLeft />
-              Retour aux classeurs
-            </Link>
-          </Button>
-
-          {binderQuery.isLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : binderQuery.isError || !binder ? (
-            <ErrorState
-              message={(binderQuery.error as Error | null)?.message ?? 'Classeur introuvable.'}
-            />
-          ) : (
-            <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-              <div className="flex flex-col gap-6">
-                <div className="space-y-1">
-                  <h2 className="font-semibold text-2xl tracking-tight">{binder.name}</h2>
-                  {binder.description ? (
-                    <p className="text-muted-foreground text-sm">{binder.description}</p>
-                  ) : null}
-                  <p className="text-muted-foreground text-xs">
-                    {binder.pageCount} pages × {binder.cols}×{binder.rows}
-                    {binder.doubleSided ? ' × recto-verso' : ''} —{' '}
-                    <span className="font-semibold text-foreground">{binder.capacity}</span> slots
-                  </p>
-                </div>
-
-                <UICard>
-                  <CardHeader className="flex flex-row items-center justify-between gap-3">
-                    <div>
-                      <CardTitle>
-                        Page {currentPage} / {pageCount}
-                      </CardTitle>
-                      <CardDescription>
-                        {binder.doubleSided
-                          ? `Face ${currentFace === 'recto' ? 'recto' : 'verso'}`
-                          : 'Recto uniquement'}
-                      </CardDescription>
-                    </div>
-                    <PageControls
-                      pageCount={pageCount}
-                      currentPage={currentPage}
-                      onPrev={() => updateSearch({ page: Math.max(1, currentPage - 1) })}
-                      onNext={() => updateSearch({ page: Math.min(pageCount, currentPage + 1) })}
-                    />
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-4">
-                    {binder.doubleSided ? (
-                      <FaceToggle
-                        current={currentFace}
-                        onChange={(face) => updateSearch({ face })}
-                      />
-                    ) : null}
-                    {slotsQuery.isLoading ? (
-                      <Skeleton className="aspect-square w-full" />
-                    ) : slotsQuery.isError ? (
-                      <ErrorState message={(slotsQuery.error as Error).message} />
-                    ) : (
-                      <Grid
-                        binder={binder}
-                        page={currentPage}
-                        face={currentFace}
-                        slotIndex={slotIndex}
-                        onRequestUnplace={setUnplaceTarget}
-                      />
-                    )}
-                  </CardContent>
-                </UICard>
+        {binderQuery.isLoading ? (
+          <Skeleton className="h-32 w-full" />
+        ) : binderQuery.isError || !binder ? (
+          <ErrorState
+            message={(binderQuery.error as Error | null)?.message ?? 'Classeur introuvable.'}
+          />
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+            <div className="flex flex-col gap-6">
+              <div className="space-y-1">
+                <h2 className="font-semibold text-2xl tracking-tight">{binder.name}</h2>
+                {binder.description ? (
+                  <p className="text-muted-foreground text-sm">{binder.description}</p>
+                ) : null}
+                <p className="text-muted-foreground text-xs">
+                  {binder.pageCount} pages × {binder.cols}×{binder.rows}
+                  {binder.doubleSided ? ' × recto-verso' : ''} —{' '}
+                  <span className="font-semibold text-foreground">{binder.capacity}</span> slots
+                </p>
               </div>
 
-              <FreeCardsPanel
-                cards={freeCards}
-                isLoading={freeCardsQuery.isLoading}
-                isError={freeCardsQuery.isError}
-              />
+              <UICard>
+                <CardHeader className="flex flex-row items-center justify-between gap-3">
+                  <div>
+                    <CardTitle>
+                      Page {currentPage} / {pageCount}
+                    </CardTitle>
+                    <CardDescription>
+                      {binder.doubleSided
+                        ? `Face ${currentFace === 'recto' ? 'recto' : 'verso'}`
+                        : 'Recto uniquement'}
+                    </CardDescription>
+                  </div>
+                  <PageControls
+                    pageCount={pageCount}
+                    currentPage={currentPage}
+                    onPrev={() => updateSearch({ page: Math.max(1, currentPage - 1) })}
+                    onNext={() => updateSearch({ page: Math.min(pageCount, currentPage + 1) })}
+                  />
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  {binder.doubleSided ? (
+                    <FaceToggle current={currentFace} onChange={(face) => updateSearch({ face })} />
+                  ) : null}
+                  {slotsQuery.isLoading ? (
+                    <Skeleton className="aspect-square w-full" />
+                  ) : slotsQuery.isError ? (
+                    <ErrorState message={(slotsQuery.error as Error).message} />
+                  ) : (
+                    <Grid
+                      binder={binder}
+                      page={currentPage}
+                      face={currentFace}
+                      slotIndex={slotIndex}
+                      onRequestUnplace={setUnplaceTarget}
+                    />
+                  )}
+                </CardContent>
+              </UICard>
             </div>
-          )}
-        </main>
-      </div>
+
+            <FreeCardsPanel
+              cards={freeCards}
+              isLoading={freeCardsQuery.isLoading}
+              isError={freeCardsQuery.isError}
+            />
+          </div>
+        )}
+      </main>
 
       <Dialog
         open={unplaceTarget !== null}

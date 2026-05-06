@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, Library, Plus, Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Search, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -78,61 +78,48 @@ export function CollectionPage() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-6 py-4">
-          <Link to="/" className="flex items-center gap-3 text-foreground">
-            <Library className="size-6 text-primary" />
-            <h1 className="font-semibold text-lg tracking-tight">pokefolder</h1>
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="font-semibold text-2xl tracking-tight">Ma collection</h2>
+          <p className="text-muted-foreground text-sm">
+            {totalItems > 0
+              ? `${totalItems} cartes différentes ${hasActiveFilters ? 'correspondent aux filtres' : 'dans la collection'}.`
+              : 'Aucune carte pour l’instant.'}
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/collection/add">
+            <Plus />
+            Ajouter une carte
           </Link>
+        </Button>
+      </div>
+
+      <FiltersBar search={search} hasActiveFilters={hasActiveFilters} onChange={updateSearch} />
+
+      {isError ? (
+        <ErrorState message={(error as Error).message} />
+      ) : isLoading ? (
+        <CollectionGridSkeleton />
+      ) : entries.length === 0 ? (
+        <EmptyState hasActiveFilters={hasActiveFilters} />
+      ) : (
+        <div className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+          <CollectionGrid entries={entries} />
         </div>
-      </header>
+      )}
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-6 py-10">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h2 className="font-semibold text-2xl tracking-tight">Ma collection</h2>
-            <p className="text-muted-foreground text-sm">
-              {totalItems > 0
-                ? `${totalItems} cartes différentes ${hasActiveFilters ? 'correspondent aux filtres' : 'dans la collection'}.`
-                : 'Aucune carte pour l’instant.'}
-            </p>
-          </div>
-          <Button asChild>
-            <Link to="/collection/add">
-              <Plus />
-              Ajouter une carte
-            </Link>
-          </Button>
-        </div>
-
-        <FiltersBar search={search} hasActiveFilters={hasActiveFilters} onChange={updateSearch} />
-
-        {isError ? (
-          <ErrorState message={(error as Error).message} />
-        ) : isLoading ? (
-          <CollectionGridSkeleton />
-        ) : entries.length === 0 ? (
-          <EmptyState hasActiveFilters={hasActiveFilters} />
-        ) : (
-          <div
-            className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}
-          >
-            <CollectionGrid entries={entries} />
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <PaginationBar
-            page={search.page}
-            totalPages={totalPages}
-            disabled={isLoading || isError}
-            onPrev={() => updateSearch({ page: search.page - 1 })}
-            onNext={() => updateSearch({ page: search.page + 1 })}
-          />
-        )}
-      </main>
-    </div>
+      {totalPages > 1 && (
+        <PaginationBar
+          page={search.page}
+          totalPages={totalPages}
+          disabled={isLoading || isError}
+          onPrev={() => updateSearch({ page: search.page - 1 })}
+          onNext={() => updateSearch({ page: search.page + 1 })}
+        />
+      )}
+    </main>
   )
 }
 

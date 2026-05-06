@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/re
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { z } from 'zod'
 
+import { Header } from '@/components/Header'
 import { BinderCreatePage } from '@/pages/BinderCreatePage'
 import { BinderEditPage } from '@/pages/BinderEditPage'
 import { BindersPage } from '@/pages/BindersPage'
@@ -15,10 +16,11 @@ import { SyncPage } from '@/pages/SyncPage'
 
 const rootRoute = createRootRoute({
   component: () => (
-    <>
+    <div className="flex min-h-svh flex-col">
+      <Header />
       <Outlet />
       {import.meta.env.DEV && <TanStackRouterDevtools position="bottom-right" />}
-    </>
+    </div>
   ),
 })
 

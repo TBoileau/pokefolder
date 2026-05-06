@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, CheckCircle2, Folder, Library, Loader2, Search } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Folder, Loader2, Search } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -122,16 +122,7 @@ export function CollectionAddPage() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-4">
-          <Link to="/" className="flex items-center gap-3 text-foreground">
-            <Library className="size-6 text-primary" />
-            <h1 className="font-semibold text-lg tracking-tight">pokefolder</h1>
-          </Link>
-        </div>
-      </header>
-
+    <>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
         <Button variant="ghost" size="sm" asChild className="self-start">
           <Link to="/collection" search={{ page: 1 }}>
@@ -262,7 +253,7 @@ export function CollectionAddPage() {
         }
         onClose={(ownedCard) => closeAndStayFree(ownedCard)}
       />
-    </div>
+    </>
   )
 }
 

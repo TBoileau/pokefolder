@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Eye, Library, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Eye, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -19,44 +19,33 @@ export function BindersPage() {
   const binders = bindersQuery.data?.member ?? []
 
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-4">
-          <Link to="/" className="flex items-center gap-3 text-foreground">
-            <Library className="size-6 text-primary" />
-            <h1 className="font-semibold text-lg tracking-tight">pokefolder</h1>
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h2 className="font-semibold text-2xl tracking-tight">Mes classeurs</h2>
+          <p className="text-muted-foreground text-sm">
+            Mirroir physique de tes classeurs. La capacité est dérivée de pages × format ×
+            recto-verso.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/binders/new">
+            <Plus />
+            Nouveau classeur
           </Link>
-        </div>
-      </header>
+        </Button>
+      </div>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-10">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h2 className="font-semibold text-2xl tracking-tight">Mes classeurs</h2>
-            <p className="text-muted-foreground text-sm">
-              Mirroir physique de tes classeurs. La capacité est dérivée de pages × format ×
-              recto-verso.
-            </p>
-          </div>
-          <Button asChild>
-            <Link to="/binders/new">
-              <Plus />
-              Nouveau classeur
-            </Link>
-          </Button>
-        </div>
-
-        {bindersQuery.isLoading ? (
-          <BindersGridSkeleton />
-        ) : bindersQuery.isError ? (
-          <ErrorState message={(bindersQuery.error as Error).message} />
-        ) : binders.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <BindersGrid binders={binders} />
-        )}
-      </main>
-    </div>
+      {bindersQuery.isLoading ? (
+        <BindersGridSkeleton />
+      ) : bindersQuery.isError ? (
+        <ErrorState message={(bindersQuery.error as Error).message} />
+      ) : binders.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <BindersGrid binders={binders} />
+      )}
+    </main>
   )
 }
 
