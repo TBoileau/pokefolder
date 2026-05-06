@@ -99,16 +99,10 @@ const binderCreateRoute = createRoute({
   component: BinderCreatePage,
 })
 
-const binderViewSearchSchema = z.object({
-  page: z.coerce.number().int().positive().catch(1),
-  face: z.enum(['recto', 'verso']).catch('recto'),
-})
-
 const binderViewRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/binders/$binderId',
   component: BinderViewPage,
-  validateSearch: binderViewSearchSchema,
 })
 
 const binderEditRoute = createRoute({

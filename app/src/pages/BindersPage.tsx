@@ -80,7 +80,6 @@ function BindersGrid({ binders }: { binders: Binder[] }) {
                   <Link
                     to="/binders/$binderId"
                     params={{ binderId: binder.id }}
-                    search={{ page: 1, face: 'recto' }}
                     aria-label={`Voir ${binder.name}`}
                   >
                     <Eye />

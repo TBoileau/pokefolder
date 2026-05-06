@@ -9,8 +9,8 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { Link, useParams } from '@tanstack/react-router'
+import { ArrowLeft, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -57,8 +57,6 @@ const DRAGGABLE_SLOT = 'placed:'
 
 export function BinderViewPage() {
   const { binderId } = useParams({ from: '/binders/$binderId' })
-  const navigate = useNavigate({ from: '/binders/$binderId' })
-  const search = useSearch({ from: '/binders/$binderId' })
 
   const binderQuery = useBinderQuery(binderId)
   const slotsQuery = useBinderSlotsQuery(binderId)
@@ -109,19 +107,6 @@ export function BinderViewPage() {
   const [activeOwnedCardId, setActiveOwnedCardId] = useState<string | null>(null)
   const [activeSource, setActiveSource] = useState<'free' | 'slot' | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
-
-  const pageCount = binder?.pageCount ?? 1
-  const currentPage = clamp(search.page, 1, pageCount)
-  const currentFace: BinderSlotFace = binder && !binder.doubleSided ? 'recto' : search.face
-
-  const updateSearch = (next: { page?: number; face?: BinderSlotFace }) => {
-    void navigate({
-      search: (prev) => ({
-        page: next.page ?? prev.page,
-        face: next.face ?? prev.face,
-      }),
-    })
-  }
 
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id)
@@ -222,7 +207,7 @@ export function BinderViewPage() {
           />
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               <div className="space-y-1">
                 <h2 className="font-semibold text-2xl tracking-tight">{binder.name}</h2>
                 {binder.description ? (
@@ -235,44 +220,17 @@ export function BinderViewPage() {
                 </p>
               </div>
 
-              <UICard>
-                <CardHeader className="flex flex-row items-center justify-between gap-3">
-                  <div>
-                    <CardTitle>
-                      Page {currentPage} / {pageCount}
-                    </CardTitle>
-                    <CardDescription>
-                      {binder.doubleSided
-                        ? `Face ${currentFace === 'recto' ? 'recto' : 'verso'}`
-                        : 'Recto uniquement'}
-                    </CardDescription>
-                  </div>
-                  <PageControls
-                    pageCount={pageCount}
-                    currentPage={currentPage}
-                    onPrev={() => updateSearch({ page: Math.max(1, currentPage - 1) })}
-                    onNext={() => updateSearch({ page: Math.min(pageCount, currentPage + 1) })}
-                  />
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  {binder.doubleSided ? (
-                    <FaceToggle current={currentFace} onChange={(face) => updateSearch({ face })} />
-                  ) : null}
-                  {slotsQuery.isLoading ? (
-                    <Skeleton className="aspect-square w-full" />
-                  ) : slotsQuery.isError ? (
-                    <ErrorState message={(slotsQuery.error as Error).message} />
-                  ) : (
-                    <Grid
-                      binder={binder}
-                      page={currentPage}
-                      face={currentFace}
-                      slotIndex={slotIndex}
-                      onRequestUnplace={setUnplaceTarget}
-                    />
-                  )}
-                </CardContent>
-              </UICard>
+              {slotsQuery.isLoading ? (
+                <Skeleton className="h-96 w-full" />
+              ) : slotsQuery.isError ? (
+                <ErrorState message={(slotsQuery.error as Error).message} />
+              ) : (
+                <AllPages
+                  binder={binder}
+                  slotIndex={slotIndex}
+                  onRequestUnplace={setUnplaceTarget}
+                />
+              )}
             </div>
 
             <FreeCardsPanel
@@ -354,87 +312,85 @@ function parseSlotId(
   return { page, face, row, col }
 }
 
-function clamp(value: number, min: number, max: number): number {
-  if (value < min) return min
-  if (value > max) return max
-  return value
-}
-
-function PageControls({
-  pageCount,
-  currentPage,
-  onPrev,
-  onNext,
-}: {
-  pageCount: number
-  currentPage: number
-  onPrev: () => void
-  onNext: () => void
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onPrev}
-        disabled={currentPage <= 1}
-        aria-label="Page précédente"
-      >
-        <ChevronLeft />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onNext}
-        disabled={currentPage >= pageCount}
-        aria-label="Page suivante"
-      >
-        <ChevronRight />
-      </Button>
-    </div>
-  )
-}
-
-function FaceToggle({
-  current,
-  onChange,
-}: {
-  current: BinderSlotFace
-  onChange: (face: BinderSlotFace) => void
-}) {
-  return (
-    <div className="inline-flex self-start rounded-md border bg-muted p-0.5 text-sm">
-      <button
-        type="button"
-        onClick={() => onChange('recto')}
-        className={`rounded px-3 py-1 transition ${
-          current === 'recto' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-        }`}
-      >
-        Recto
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange('verso')}
-        className={`rounded px-3 py-1 transition ${
-          current === 'verso' ? 'bg-background shadow-sm' : 'text-muted-foreground'
-        }`}
-      >
-        Verso
-      </button>
-    </div>
-  )
-}
-
-function Grid({
+function AllPages({
   binder,
-  page,
+  slotIndex,
+  onRequestUnplace,
+}: {
+  binder: Binder
+  slotIndex: SlotIndex
+  onRequestUnplace: (ownedCard: NonNullable<BinderSlot['ownedCard']>) => void
+}) {
+  const pages = Array.from({ length: binder.pageCount }, (_unused, i) => i + 1)
+
+  return (
+    <div className="flex flex-col gap-4">
+      {pages.map((pageNumber) => (
+        <PageBlock
+          key={pageNumber}
+          binder={binder}
+          pageNumber={pageNumber}
+          slotIndex={slotIndex}
+          onRequestUnplace={onRequestUnplace}
+        />
+      ))}
+    </div>
+  )
+}
+
+function PageBlock({
+  binder,
+  pageNumber,
+  slotIndex,
+  onRequestUnplace,
+}: {
+  binder: Binder
+  pageNumber: number
+  slotIndex: SlotIndex
+  onRequestUnplace: (ownedCard: NonNullable<BinderSlot['ownedCard']>) => void
+}) {
+  const isEven = pageNumber % 2 === 0
+
+  return (
+    <UICard
+      className={`overflow-hidden ${
+        isEven ? 'border-l-4 border-l-primary/40' : 'border-l-4 border-l-muted'
+      }`}
+    >
+      <CardHeader className="bg-muted/30 py-3">
+        <CardTitle className="text-base">Page {pageNumber}</CardTitle>
+      </CardHeader>
+      <CardContent className={`grid gap-4 pt-4 ${binder.doubleSided ? 'md:grid-cols-2' : ''}`}>
+        <FaceGrid
+          binder={binder}
+          pageNumber={pageNumber}
+          face="recto"
+          slotIndex={slotIndex}
+          onRequestUnplace={onRequestUnplace}
+        />
+        {binder.doubleSided ? (
+          <FaceGrid
+            binder={binder}
+            pageNumber={pageNumber}
+            face="verso"
+            slotIndex={slotIndex}
+            onRequestUnplace={onRequestUnplace}
+          />
+        ) : null}
+      </CardContent>
+    </UICard>
+  )
+}
+
+function FaceGrid({
+  binder,
+  pageNumber,
   face,
   slotIndex,
   onRequestUnplace,
 }: {
   binder: Binder
-  page: number
+  pageNumber: number
   face: BinderSlotFace
   slotIndex: SlotIndex
   onRequestUnplace: (ownedCard: NonNullable<BinderSlot['ownedCard']>) => void
@@ -442,26 +398,31 @@ function Grid({
   const cells: { row: number; col: number; slot: BinderSlot | undefined }[] = []
   for (let row = 1; row <= binder.rows; row += 1) {
     for (let col = 1; col <= binder.cols; col += 1) {
-      cells.push({ row, col, slot: slotIndex.get(positionKey(page, face, row, col)) })
+      cells.push({ row, col, slot: slotIndex.get(positionKey(pageNumber, face, row, col)) })
     }
   }
 
   return (
-    <div
-      className="grid gap-3"
-      style={{ gridTemplateColumns: `repeat(${binder.cols}, minmax(0, 1fr))` }}
-    >
-      {cells.map(({ row, col, slot }) => (
-        <SlotCell
-          key={`${row}-${col}`}
-          page={page}
-          face={face}
-          row={row}
-          col={col}
-          slot={slot}
-          onRequestUnplace={onRequestUnplace}
-        />
-      ))}
+    <div className="flex flex-col gap-2">
+      <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        {face === 'recto' ? 'Recto' : 'Verso'}
+      </p>
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${binder.cols}, minmax(0, 1fr))` }}
+      >
+        {cells.map(({ row, col, slot }) => (
+          <SlotCell
+            key={`${row}-${col}`}
+            page={pageNumber}
+            face={face}
+            row={row}
+            col={col}
+            slot={slot}
+            onRequestUnplace={onRequestUnplace}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -492,7 +453,7 @@ function SlotCell({
       <div
         ref={setDroppableRef}
         role="img"
-        aria-label={`Slot vide ligne ${row} colonne ${col}`}
+        aria-label={`Slot vide page ${page} ${face} ligne ${row} colonne ${col}`}
         className={`flex aspect-[5/7] items-center justify-center rounded-md border-2 border-dashed text-xs transition ${
           isOver
             ? 'border-primary bg-primary/10 text-primary'
