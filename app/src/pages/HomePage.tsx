@@ -33,6 +33,9 @@ export function HomePage() {
               Ma collection
             </Link>
           </Button>
+          <Button asChild variant="secondary">
+            <Link to="/binders">Mes classeurs</Link>
+          </Button>
           <Button asChild variant="outline">
             <Link to="/sync">Synchroniser TCGdex</Link>
           </Button>
