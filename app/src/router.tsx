@@ -22,7 +22,16 @@ const indexRoute = createRoute({
 
 const cardsSearchSchema = z.object({
   page: z.coerce.number().int().positive().catch(1),
+  q: z.string().optional().catch(undefined),
+  setId: z.string().optional().catch(undefined),
+  language: z.enum(['fr', 'en']).optional().catch(undefined),
+  variant: z
+    .enum(['normal', 'reverse', 'holo', 'firstEdition', 'wPromo'])
+    .optional()
+    .catch(undefined),
 })
+
+export type CardsSearch = z.infer<typeof cardsSearchSchema>
 
 const cardsRoute = createRoute({
   getParentRoute: () => rootRoute,

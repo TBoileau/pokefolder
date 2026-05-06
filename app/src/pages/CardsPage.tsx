@@ -1,5 +1,6 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, Library } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Library, Search, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -9,22 +10,68 @@ import {
   CardTitle,
   Card as UICard,
 } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CARDS_PER_PAGE, useCardsQuery } from '@/hooks/useCardsQuery'
 import { tcgdexImageUrl } from '@/lib/tcgdex'
 import type { Card } from '@/types/card'
 
+const LANGUAGES: { value: 'fr' | 'en'; label: string }[] = [
+  { value: 'fr', label: 'Français' },
+  { value: 'en', label: 'English' },
+]
+
+const VARIANTS: {
+  value: 'normal' | 'reverse' | 'holo' | 'firstEdition' | 'wPromo'
+  label: string
+}[] = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'reverse', label: 'Reverse' },
+  { value: 'holo', label: 'Holo' },
+  { value: 'firstEdition', label: '1st Edition' },
+  { value: 'wPromo', label: 'Promo' },
+]
+
+const ALL_VALUE = '__all__'
+
 export function CardsPage() {
-  const { page } = useSearch({ from: '/cards' })
+  const search = useSearch({ from: '/cards' })
   const navigate = useNavigate({ from: '/cards' })
-  const { data, isLoading, isError, error, isPlaceholderData } = useCardsQuery(page)
+
+  const filters = {
+    name: search.q ?? '',
+    setId: search.setId ?? '',
+    language: search.language ?? '',
+    variant: search.variant ?? '',
+  }
+
+  const { data, isLoading, isError, error, isPlaceholderData } = useCardsQuery(search.page, {
+    name: filters.name,
+    setId: filters.setId,
+    language: filters.language,
+    variant: filters.variant,
+  })
 
   const totalItems = data?.totalItems ?? 0
   const totalPages = Math.max(1, Math.ceil(totalItems / CARDS_PER_PAGE))
   const cards = data?.member ?? []
+  const hasActiveFilters =
+    Boolean(search.q) ||
+    Boolean(search.setId) ||
+    Boolean(search.language) ||
+    Boolean(search.variant)
 
-  const goToPage = (next: number) => {
-    void navigate({ search: { page: next } })
+  const updateSearch = (next: Partial<typeof search>) => {
+    void navigate({
+      search: (prev) => ({ ...prev, ...next, page: next.page ?? 1 }),
+    })
   }
 
   return (
@@ -43,17 +90,19 @@ export function CardsPage() {
           <h2 className="font-semibold text-2xl tracking-tight">Catalogue Pokémon TCG</h2>
           <p className="text-muted-foreground text-sm">
             {totalItems > 0
-              ? `${totalItems} cartes synchronisées depuis TCGdex.`
-              : 'Aucune carte synchronisée pour le moment.'}
+              ? `${totalItems} cartes ${hasActiveFilters ? 'correspondent aux filtres' : 'synchronisées depuis TCGdex'}.`
+              : 'Aucune carte ne correspond.'}
           </p>
         </div>
+
+        <FiltersBar search={search} hasActiveFilters={hasActiveFilters} onChange={updateSearch} />
 
         {isError ? (
           <ErrorState message={(error as Error).message} />
         ) : isLoading ? (
           <CardsGridSkeleton />
         ) : cards.length === 0 ? (
-          <EmptyState />
+          <EmptyState hasActiveFilters={hasActiveFilters} />
         ) : (
           <div
             className={isPlaceholderData ? 'opacity-60 transition-opacity' : 'transition-opacity'}
@@ -64,15 +113,168 @@ export function CardsPage() {
 
         {totalPages > 1 && (
           <PaginationBar
-            page={page}
+            page={search.page}
             totalPages={totalPages}
             disabled={isLoading || isError}
-            onPrev={() => goToPage(page - 1)}
-            onNext={() => goToPage(page + 1)}
+            onPrev={() => updateSearch({ page: search.page - 1 })}
+            onNext={() => updateSearch({ page: search.page + 1 })}
           />
         )}
       </main>
     </div>
+  )
+}
+
+type FiltersBarSearch = {
+  q?: string | undefined
+  setId?: string | undefined
+  language?: 'fr' | 'en' | undefined
+  variant?: 'normal' | 'reverse' | 'holo' | 'firstEdition' | 'wPromo' | undefined
+}
+
+type FiltersBarUpdate = FiltersBarSearch
+
+function FiltersBar({
+  search,
+  hasActiveFilters,
+  onChange,
+}: {
+  search: FiltersBarSearch
+  hasActiveFilters: boolean
+  onChange: (next: FiltersBarUpdate) => void
+}) {
+  const [qInput, setQInput] = useState(search.q ?? '')
+  const [setInput, setSetInput] = useState(search.setId ?? '')
+
+  // Keep local inputs in sync if the URL changes externally (browser back/forward).
+  useEffect(() => {
+    setQInput(search.q ?? '')
+  }, [search.q])
+  useEffect(() => {
+    setSetInput(search.setId ?? '')
+  }, [search.setId])
+
+  // Debounce text inputs so we don't refetch on every keystroke.
+  useEffect(() => {
+    const trimmed = qInput.trim()
+    if (trimmed === (search.q ?? '')) return
+    const id = window.setTimeout(() => {
+      onChange({ q: trimmed === '' ? undefined : trimmed })
+    }, 300)
+    return () => window.clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally narrow deps
+  }, [qInput, onChange, search.q])
+  useEffect(() => {
+    const trimmed = setInput.trim()
+    if (trimmed === (search.setId ?? '')) return
+    const id = window.setTimeout(() => {
+      onChange({ setId: trimmed === '' ? undefined : trimmed })
+    }, 300)
+    return () => window.clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally narrow deps
+  }, [setInput, search.setId, onChange])
+
+  const reset = () => {
+    setQInput('')
+    setSetInput('')
+    onChange({ q: undefined, setId: undefined, language: undefined, variant: undefined })
+  }
+
+  return (
+    <section
+      aria-label="Filtres"
+      className="grid grid-cols-1 gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5"
+    >
+      <div className="relative flex flex-col gap-1 lg:col-span-2">
+        <label htmlFor="cards-filter-q" className="font-medium text-muted-foreground text-xs">
+          Recherche
+        </label>
+        <span className="relative">
+          <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="cards-filter-q"
+            value={qInput}
+            onChange={(event) => setQInput(event.target.value)}
+            placeholder="Nom de carte (ex. Charizard)"
+            className="pl-8"
+          />
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="cards-filter-set" className="font-medium text-muted-foreground text-xs">
+          Set
+        </label>
+        <Input
+          id="cards-filter-set"
+          value={setInput}
+          onChange={(event) => setSetInput(event.target.value)}
+          placeholder="ex. base1"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span id="cards-filter-language" className="font-medium text-muted-foreground text-xs">
+          Langue
+        </span>
+        <Select
+          value={search.language ?? ALL_VALUE}
+          onValueChange={(value) =>
+            onChange({ language: value === ALL_VALUE ? undefined : (value as 'fr' | 'en') })
+          }
+        >
+          <SelectTrigger aria-labelledby="cards-filter-language">
+            <SelectValue placeholder="Toutes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_VALUE}>Toutes</SelectItem>
+            {LANGUAGES.map((language) => (
+              <SelectItem key={language.value} value={language.value}>
+                {language.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <span id="cards-filter-variant" className="font-medium text-muted-foreground text-xs">
+          Variant
+        </span>
+        <Select
+          value={search.variant ?? ALL_VALUE}
+          onValueChange={(value) =>
+            onChange({
+              variant:
+                value === ALL_VALUE
+                  ? undefined
+                  : (value as 'normal' | 'reverse' | 'holo' | 'firstEdition' | 'wPromo'),
+            })
+          }
+        >
+          <SelectTrigger aria-labelledby="cards-filter-variant">
+            <SelectValue placeholder="Tous" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_VALUE}>Tous</SelectItem>
+            {VARIANTS.map((variant) => (
+              <SelectItem key={variant.value} value={variant.value}>
+                {variant.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {hasActiveFilters && (
+        <div className="flex items-end sm:col-span-2 lg:col-span-5 lg:justify-end">
+          <Button variant="ghost" size="sm" onClick={reset}>
+            <X />
+            Réinitialiser les filtres
+          </Button>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -144,7 +346,16 @@ function CardsGridSkeleton() {
   )
 }
 
-function EmptyState() {
+function EmptyState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
+  if (hasActiveFilters) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-16 text-center">
+        <p className="font-medium">Aucune carte ne correspond à ces filtres.</p>
+        <p className="text-muted-foreground text-sm">Essaie de relâcher un critère.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed py-16 text-center">
       <p className="font-medium">Le catalogue est vide.</p>
