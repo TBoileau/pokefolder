@@ -135,16 +135,56 @@ function migrate_status(): void
     run('bin/console doctrine:migrations:status', context: api_context());
 }
 
-#[AsTask(name: 'db:reset', description: 'Drop and recreate the dev AND test databases, then re-apply all migrations.')]
+const CARDS_DUMP = API_DIR . '/var/db/cards.sql';
+
+#[AsTask(name: 'db:dump', description: 'Dump the catalog (card table) to api/var/db/cards.sql so we can re-seed without re-syncing TCGdex.')]
+function db_dump(): void
+{
+    io()->title('Dumping card table to api/var/db/cards.sql');
+    run('mkdir -p var/db', context: api_context());
+    run(
+        'docker exec pokefolder-postgres pg_dump -U pokefolder -d pokefolder --data-only --inserts -t card > var/db/cards.sql',
+        context: api_context(),
+    );
+    io()->success('Dump written to api/var/db/cards.sql.');
+}
+
+#[AsTask(name: 'db:load', description: 'Reload api/var/db/cards.sql into the dev catalog (truncates the card table first). No-op if the dump is missing.')]
+function db_load(): void
+{
+    if (!\is_file(CARDS_DUMP)) {
+        io()->warning('api/var/db/cards.sql not found — run `castor api:db:dump` after a sync to seed it.');
+
+        return;
+    }
+
+    io()->title('Loading card dump into dev DB');
+    run(
+        'docker exec -i pokefolder-postgres psql -U pokefolder -d pokefolder -c "TRUNCATE TABLE card"',
+        context: api_context(),
+    );
+    run(
+        'docker exec -i pokefolder-postgres psql -U pokefolder -d pokefolder < var/db/cards.sql',
+        context: api_context(),
+    );
+    io()->success('Card dump loaded into dev DB.');
+}
+
+#[AsTask(name: 'db:reset', description: 'Drop and recreate the dev AND test databases, re-apply all migrations, and re-seed the dev catalog from api/var/db/cards.sql when present.')]
 function db_reset(): void
 {
     io()->title('Resetting dev + test databases');
 
     foreach (['dev', 'test'] as $env) {
         $envContext = api_context()->withEnvironment(['APP_ENV' => $env]);
-        io()->section(sprintf('[%s] drop + create + migrate', $env));
+        io()->section(\sprintf('[%s] drop + create + migrate', $env));
         run('bin/console doctrine:database:drop --if-exists --force', context: $envContext);
         run('bin/console doctrine:database:create --if-not-exists', context: $envContext);
         run('bin/console doctrine:migrations:migrate --no-interaction', context: $envContext);
+    }
+
+    if (\is_file(CARDS_DUMP)) {
+        io()->section('[dev] reload card dump');
+        db_load();
     }
 }

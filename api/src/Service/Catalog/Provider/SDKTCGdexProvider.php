@@ -9,7 +9,8 @@ use App\Service\Catalog\DTO\TCGdexSet;
 use TCGdex\Model\SubModel\Variants;
 use TCGdex\TCGdex;
 
-use function is_array;
+use function get_object_vars;
+use function is_object;
 use function is_string;
 
 /**
@@ -66,10 +67,20 @@ final readonly class SDKTCGdexProvider implements TCGdexProvider
             return [];
         }
 
+        // Each item is a stdClass deserialised from the JSON response.
+        // Read it through get_object_vars() so PHPStan can narrow the
+        // `id` property's type (object access on stdClass is rejected
+        // under bleedingEdge + checkImplicitMixed).
         $ids = [];
         foreach ($response as $item) {
-            if (is_array($item) && isset($item['id']) && is_string($item['id'])) {
-                $ids[] = $item['id'];
+            if (!is_object($item)) {
+                continue;
+            }
+
+            $vars = get_object_vars($item);
+            $id = $vars['id'] ?? null;
+            if (is_string($id)) {
+                $ids[] = $id;
             }
         }
 

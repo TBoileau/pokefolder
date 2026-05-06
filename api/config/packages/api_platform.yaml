@@ -1,7 +1,13 @@
 api_platform:
-    title: Hello API Platform
+    title: pokefolder
     version: 1.0.0
     defaults:
         stateless: true
         cache_headers:
             vary: ['Content-Type', 'Authorization', 'Origin']
+        # Pagination defaults — keep front and API in sync. The front grid
+        # pages by 24, so the default itemsPerPage matches it. Clients can
+        # request larger pages via ?itemsPerPage=N up to the maximum.
+        pagination_items_per_page: 24
+        pagination_client_items_per_page: true
+        pagination_maximum_items_per_page: 100
