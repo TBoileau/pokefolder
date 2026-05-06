@@ -1,5 +1,6 @@
 import { Link, useParams } from '@tanstack/react-router'
-import { ArrowLeft, Library } from 'lucide-react'
+import { ArrowLeft, Library, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   useCardQuery,
+  useDeleteOwnedCardMutation,
   useOwnedCardsByCardQuery,
   useUpdateConditionMutation,
 } from '@/hooks/useOwnedCardsHooks'
@@ -41,6 +43,7 @@ export function CollectionCardPage() {
   const cardQuery = useCardQuery(cardId)
   const ownedQuery = useOwnedCardsByCardQuery(cardId)
   const updateCondition = useUpdateConditionMutation(cardId)
+  const deleteOwnedCard = useDeleteOwnedCardMutation(cardId)
 
   const card = cardQuery.data
   const ownedCopies = ownedQuery.data?.member ?? []
@@ -112,18 +115,25 @@ export function CollectionCardPage() {
                   key={copy.id}
                   index={index + 1}
                   copy={copy}
-                  isPending={
+                  isUpdating={
                     updateCondition.isPending && updateCondition.variables?.ownedCardId === copy.id
                   }
-                  onChange={(condition) =>
+                  isDeleting={deleteOwnedCard.isPending && deleteOwnedCard.variables === copy.id}
+                  onChangeCondition={(condition) =>
                     updateCondition.mutate({ ownedCardId: copy.id, condition })
                   }
+                  onDelete={() => deleteOwnedCard.mutate(copy.id)}
                 />
               ))
             )}
             {updateCondition.isError ? (
               <p className="text-destructive text-sm">
                 Échec de la mise à jour : {(updateCondition.error as Error).message}
+              </p>
+            ) : null}
+            {deleteOwnedCard.isError ? (
+              <p className="text-destructive text-sm">
+                Échec de la suppression : {(deleteOwnedCard.error as Error).message}
               </p>
             ) : null}
           </CardContent>
@@ -136,14 +146,20 @@ export function CollectionCardPage() {
 function CopyRow({
   index,
   copy,
-  isPending,
-  onChange,
+  isUpdating,
+  isDeleting,
+  onChangeCondition,
+  onDelete,
 }: {
   index: number
   copy: OwnedCard
-  isPending: boolean
-  onChange: (condition: Condition) => void
+  isUpdating: boolean
+  isDeleting: boolean
+  onChangeCondition: (condition: Condition) => void
+  onDelete: () => void
 }) {
+  const [confirming, setConfirming] = useState(false)
+
   return (
     <div className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
@@ -160,23 +176,62 @@ function CopyRow({
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2 sm:w-64">
-        <Select
-          value={copy.condition}
-          onValueChange={(value) => onChange(value as Condition)}
-          disabled={isPending}
-        >
-          <SelectTrigger className="flex-1" aria-label="Condition de l'exemplaire">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {CONDITIONS.map((condition) => (
-              <SelectItem key={condition.value} value={condition.value}>
-                {condition.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="sm:w-56">
+          <Select
+            value={copy.condition}
+            onValueChange={(value) => onChangeCondition(value as Condition)}
+            disabled={isUpdating || isDeleting || confirming}
+          >
+            <SelectTrigger aria-label="Condition de l'exemplaire">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CONDITIONS.map((condition) => (
+                <SelectItem key={condition.value} value={condition.value}>
+                  {condition.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {confirming ? (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs">Supprimer définitivement ?</span>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={onDelete}
+              disabled={isDeleting}
+              aria-label="Confirmer la suppression"
+            >
+              <Trash2 />
+              {isDeleting ? 'Suppression…' : 'Confirmer'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirming(false)}
+              disabled={isDeleting}
+              aria-label="Annuler la suppression"
+            >
+              <X />
+              Annuler
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setConfirming(true)}
+            disabled={isUpdating || isDeleting}
+            aria-label="Supprimer cet exemplaire"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 />
+            Supprimer
+          </Button>
+        )}
       </div>
     </div>
   )
