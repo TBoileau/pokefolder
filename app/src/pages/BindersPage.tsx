@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { Library, Plus } from 'lucide-react'
+import { Library, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -10,7 +11,7 @@ import {
   Card as UICard,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useBindersQuery } from '@/hooks/useBindersHooks'
+import { useBindersQuery, useDeleteBinderMutation } from '@/hooks/useBindersHooks'
 import type { Binder } from '@/types/binder'
 
 export function BindersPage() {
@@ -60,26 +61,86 @@ export function BindersPage() {
 }
 
 function BindersGrid({ binders }: { binders: Binder[] }) {
+  const deleteBinder = useDeleteBinderMutation()
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+
   return (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {binders.map((binder) => (
         <li key={binder.id}>
-          <UICard className="h-full">
+          <UICard className="flex h-full flex-col">
             <CardHeader>
               <CardTitle>{binder.name}</CardTitle>
               {binder.description ? (
                 <CardDescription className="line-clamp-2">{binder.description}</CardDescription>
               ) : null}
             </CardHeader>
-            <CardContent className="flex flex-col gap-2 text-muted-foreground text-sm">
-              <p>
-                Capacité : <span className="font-semibold text-foreground">{binder.capacity}</span>{' '}
-                slots
-              </p>
-              <p className="text-xs">
-                {binder.pageCount} pages × {binder.cols}×{binder.rows}
-                {binder.doubleSided ? ' × recto-verso' : ''}
-              </p>
+            <CardContent className="flex flex-1 flex-col justify-between gap-3 text-muted-foreground text-sm">
+              <div className="space-y-1">
+                <p>
+                  Capacité :{' '}
+                  <span className="font-semibold text-foreground">{binder.capacity}</span> slots
+                </p>
+                <p className="text-xs">
+                  {binder.pageCount} pages × {binder.cols}×{binder.rows}
+                  {binder.doubleSided ? ' × recto-verso' : ''}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 border-t pt-3">
+                <Button asChild variant="ghost" size="sm">
+                  <Link
+                    to="/binders/$binderId/edit"
+                    params={{ binderId: binder.id }}
+                    aria-label={`Modifier ${binder.name}`}
+                  >
+                    <Pencil />
+                    Modifier
+                  </Link>
+                </Button>
+                {confirmingId === binder.id ? (
+                  <>
+                    <span className="text-muted-foreground text-xs">Supprimer ?</span>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        deleteBinder.mutate(binder.id, {
+                          onSettled: () => setConfirmingId(null),
+                        })
+                      }}
+                      disabled={deleteBinder.isPending}
+                    >
+                      <Trash2 />
+                      Confirmer
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmingId(null)}
+                      disabled={deleteBinder.isPending}
+                    >
+                      <X />
+                      Annuler
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmingId(binder.id)}
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Supprimer ${binder.name}`}
+                  >
+                    <Trash2 />
+                    Supprimer
+                  </Button>
+                )}
+              </div>
+              {deleteBinder.isError && deleteBinder.variables === binder.id ? (
+                <p className="text-destructive text-xs">
+                  Échec : {(deleteBinder.error as Error).message}
+                </p>
+              ) : null}
             </CardContent>
           </UICard>
         </li>
