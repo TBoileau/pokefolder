@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
-import { Library } from 'lucide-react'
+import { Library, Plus } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import {
   CardContent,
   CardDescription,
@@ -36,6 +37,12 @@ export function BindersPage() {
               recto-verso.
             </p>
           </div>
+          <Button asChild>
+            <Link to="/binders/new">
+              <Plus />
+              Nouveau classeur
+            </Link>
+          </Button>
         </div>
 
         {bindersQuery.isLoading ? (
