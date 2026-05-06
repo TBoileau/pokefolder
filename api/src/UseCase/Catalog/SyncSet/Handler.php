@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UseCase\Catalog\SyncSet;
 
 use App\Entity\Card;
+use App\Exception\Catalog\SetNotFoundException;
 use App\Repository\CardRepository;
 use App\Service\Catalog\Provider\TCGdexProvider;
 use Doctrine\ORM\EntityManagerInterface;

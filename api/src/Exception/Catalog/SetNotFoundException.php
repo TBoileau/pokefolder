@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\UseCase\Catalog\SyncSet;
+namespace App\Exception\Catalog;
 
 final class SetNotFoundException extends \RuntimeException
 {

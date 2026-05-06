@@ -8,9 +8,9 @@ use App\Repository\CardRepository;
 use App\Service\Catalog\DTO\TCGdexCard;
 use App\Service\Catalog\DTO\TCGdexSet;
 use App\Tests\Service\Catalog\Provider\InMemoryTCGdexProvider;
+use App\Exception\Catalog\SetNotFoundException;
 use App\UseCase\Catalog\SyncSet\Handler;
 use App\UseCase\Catalog\SyncSet\Input;
-use App\UseCase\Catalog\SyncSet\SetNotFoundException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 

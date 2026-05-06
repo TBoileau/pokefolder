@@ -28,6 +28,8 @@ api/src/
 ├── Command/                      ← Symfony CLI commands
 ├── Controller/                   ← plain Symfony controllers (e.g. healthcheck)
 ├── Entity/                       ← Doctrine entities
+├── Exception/                    ← domain exceptions, grouped by area
+│   └── <Area>/
 ├── Repository/                   ← Doctrine repositories (root, Symfony convention)
 ├── Service/                      ← reusable utilities, grouped by domain area
 │   └── Catalog/
@@ -38,8 +40,7 @@ api/src/
         └── <Verb>/
             ├── Input.php         ← message / DTO carrying the request
             ├── Handler.php       ← the operation logic, registered via #[AsMessageHandler] when async
-            ├── Output.php        ← (optional) the operation's return shape
-            └── <DomainException>.php  (optional) exceptions specific to the use case
+            └── Output.php        ← (optional) the operation's return shape
 ```
 
 ### Decision rule for "use case vs default API Platform CRUD"
@@ -59,7 +60,13 @@ If **none** of these apply, the operation lives as default API Platform CRUD (`G
 - **`Input.php`** — the DTO/message carrying the request. Used `Input` rather than `Message` (kept generic so synchronous and async use cases share the convention) or `Command` (would clash with `src/Command/` for CLI commands).
 - **`Handler.php`** — the operation logic. Decorated with `#[AsMessageHandler]` when async, otherwise simply autowired and called by the caller (Controller, State Processor, another Handler).
 - **`Output.php`** — only when the handler returns a non-trivial object. Optional.
-- **`<DomainException>.php`** — exceptions raised by the handler that are specific to this use case.
+
+### Domain exceptions live in `Exception/<area>/`
+
+Exceptions raised by handlers, services or entities are **not** co-located with the use case that throws them. They live under `src/Exception/<Area>/<Name>.php` (namespace `App\Exception\<Area>`) so that:
+
+- Catchers across multiple use cases share a stable import path. A `SetNotFoundException` thrown by `SyncSet` is the same class a future `SyncAll` (or any other use case in the catalog area) would catch — duplicating it under each `UseCase/<verb>/` would defeat its purpose.
+- The exception namespace mirrors the domain glossary in `CONTEXT.md` (one folder per domain area), independent of how many use cases touch it.
 
 ### Why `Service/<area>/...` and not `Service/` flat
 
