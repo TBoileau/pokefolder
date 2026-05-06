@@ -93,6 +93,28 @@ export type MovePayload = {
   col: number
 }
 
+export function useUnplaceCardMutation(binderId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (ownedCardId: string) => {
+      const response = await fetch(`/api/owned-cards/${ownedCardId}/unplace`, {
+        method: 'POST',
+      })
+      if (!response.ok && response.status !== 204) {
+        const text = await response.text().catch(() => '')
+        throw new PlacementHttpError(response.status, text || `HTTP ${response.status}`)
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['binders', 'slots', binderId] }),
+        queryClient.invalidateQueries({ queryKey: ['owned-cards'] }),
+        queryClient.invalidateQueries({ queryKey: ['collection'] }),
+      ])
+    },
+  })
+}
+
 export function useMoveCardMutation(currentBinderId: string) {
   const queryClient = useQueryClient()
   return useMutation({
