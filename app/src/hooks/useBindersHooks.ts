@@ -84,6 +84,31 @@ export function usePlaceCardMutation(binderId: string) {
   })
 }
 
+export type MovePayload = {
+  ownedCardId: string
+  binderId: string
+  pageNumber: number
+  face: 'recto' | 'verso'
+  row: number
+  col: number
+}
+
+export function useMoveCardMutation(currentBinderId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ownedCardId, ...rest }: MovePayload) =>
+      postPlainJson<PlaceResponse>(`/api/owned-cards/${ownedCardId}/move`, rest),
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['binders', 'slots', currentBinderId] }),
+        queryClient.invalidateQueries({ queryKey: ['binders', 'slots', variables.binderId] }),
+        queryClient.invalidateQueries({ queryKey: ['owned-cards'] }),
+        queryClient.invalidateQueries({ queryKey: ['collection'] }),
+      ])
+    },
+  })
+}
+
 export type BinderInput = {
   name: string
   description: string | null

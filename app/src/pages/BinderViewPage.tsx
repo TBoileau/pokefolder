@@ -27,6 +27,7 @@ import {
   PlacementHttpError,
   useBinderQuery,
   useBinderSlotsQuery,
+  useMoveCardMutation,
   usePlaceCardMutation,
 } from '@/hooks/useBindersHooks'
 import { useFreeOwnedCardsQuery } from '@/hooks/useOwnedCardsHooks'
@@ -36,7 +37,8 @@ import type { BinderSlot, BinderSlotFace } from '@/types/binderSlot'
 import type { OwnedCard } from '@/types/ownedCard'
 
 const DROPPABLE_PREFIX = 'slot:'
-const DRAGGABLE_PREFIX = 'free:'
+const DRAGGABLE_FREE = 'free:'
+const DRAGGABLE_SLOT = 'placed:'
 
 export function BinderViewPage() {
   const { binderId } = useParams({ from: '/binders/$binderId' })
@@ -47,6 +49,7 @@ export function BinderViewPage() {
   const slotsQuery = useBinderSlotsQuery(binderId)
   const freeCardsQuery = useFreeOwnedCardsQuery()
   const placeCard = usePlaceCardMutation(binderId)
+  const moveCard = useMoveCardMutation(binderId)
 
   const binder = binderQuery.data
   const slots = slotsQuery.data?.member ?? []
@@ -58,8 +61,18 @@ export function BinderViewPage() {
     for (const card of freeCards) map.set(card.id, card)
     return map
   }, [freeCards])
+  const placedCardIndex = useMemo(() => {
+    const map = new Map<string, NonNullable<BinderSlot['ownedCard']>>()
+    for (const slot of slots) {
+      if (slot.ownedCard) {
+        map.set(slot.ownedCard.id, slot.ownedCard)
+      }
+    }
+    return map
+  }, [slots])
 
   const [activeOwnedCardId, setActiveOwnedCardId] = useState<string | null>(null)
+  const [activeSource, setActiveSource] = useState<'free' | 'slot' | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
   const pageCount = binder?.pageCount ?? 1
@@ -77,51 +90,83 @@ export function BinderViewPage() {
 
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id)
-    if (id.startsWith(DRAGGABLE_PREFIX)) {
-      setActiveOwnedCardId(id.slice(DRAGGABLE_PREFIX.length))
+    if (id.startsWith(DRAGGABLE_FREE)) {
+      setActiveOwnedCardId(id.slice(DRAGGABLE_FREE.length))
+      setActiveSource('free')
+    } else if (id.startsWith(DRAGGABLE_SLOT)) {
+      setActiveOwnedCardId(id.slice(DRAGGABLE_SLOT.length))
+      setActiveSource('slot')
     }
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
+    const source = activeSource
     setActiveOwnedCardId(null)
-    const activeId = String(event.active.id)
-    if (!activeId.startsWith(DRAGGABLE_PREFIX)) return
-    const overId = event.over ? String(event.over.id) : null
-    if (!overId?.startsWith(DROPPABLE_PREFIX)) return
+    setActiveSource(null)
 
-    const ownedCardId = activeId.slice(DRAGGABLE_PREFIX.length)
+    const activeId = String(event.active.id)
+    const overId = event.over ? String(event.over.id) : null
+
+    let ownedCardId: string | null = null
+    if (activeId.startsWith(DRAGGABLE_FREE)) ownedCardId = activeId.slice(DRAGGABLE_FREE.length)
+    else if (activeId.startsWith(DRAGGABLE_SLOT))
+      ownedCardId = activeId.slice(DRAGGABLE_SLOT.length)
+    if (!ownedCardId) return
+
+    if (!overId?.startsWith(DROPPABLE_PREFIX)) return
     const target = parseSlotId(overId.slice(DROPPABLE_PREFIX.length))
     if (!target) return
 
     const occupant = slotIndex.get(positionKey(target.page, target.face, target.row, target.col))
     if (occupant?.ownedCard) {
+      if (occupant.ownedCard.id === ownedCardId) return
       toast.error('Slot déjà occupé')
       return
     }
 
-    placeCard.mutate(
-      {
-        ownedCardId,
-        pageNumber: target.page,
-        face: target.face,
-        row: target.row,
-        col: target.col,
-      },
-      {
-        onSuccess: () => {
-          toast.success('Carte placée')
+    const refetchOnConflict = () => {
+      void slotsQuery.refetch()
+      void freeCardsQuery.refetch()
+    }
+    const handleError = (error: Error) => {
+      if (error instanceof PlacementHttpError && error.status === 409) {
+        toast.error('Conflit : slot devenu occupé. Vue rafraîchie.')
+        refetchOnConflict()
+      } else {
+        toast.error(`Échec : ${error.message}`)
+      }
+    }
+
+    if (source === 'free') {
+      placeCard.mutate(
+        {
+          ownedCardId,
+          pageNumber: target.page,
+          face: target.face,
+          row: target.row,
+          col: target.col,
         },
-        onError: (error) => {
-          if (error instanceof PlacementHttpError && error.status === 409) {
-            toast.error('Conflit : slot devenu occupé. Vue rafraîchie.')
-            void slotsQuery.refetch()
-            void freeCardsQuery.refetch()
-          } else {
-            toast.error(`Échec : ${error.message}`)
-          }
+        {
+          onSuccess: () => toast.success('Carte placée'),
+          onError: handleError,
         },
-      },
-    )
+      )
+    } else if (source === 'slot') {
+      moveCard.mutate(
+        {
+          ownedCardId,
+          binderId,
+          pageNumber: target.page,
+          face: target.face,
+          row: target.row,
+          col: target.col,
+        },
+        {
+          onSuccess: () => toast.success('Carte déplacée'),
+          onError: handleError,
+        },
+      )
+    }
   }
 
   return (
@@ -218,7 +263,12 @@ export function BinderViewPage() {
       </div>
 
       <DragOverlay dropAnimation={null}>
-        {activeOwnedCardId ? <DragPreview card={freeCardIndex.get(activeOwnedCardId)} /> : null}
+        {activeOwnedCardId ? (
+          <DragPreview
+            ownedCard={freeCardIndex.get(activeOwnedCardId)}
+            placed={placedCardIndex.get(activeOwnedCardId)}
+          />
+        ) : null}
       </DragOverlay>
     </DndContext>
   )
@@ -367,14 +417,15 @@ function SlotCell({
   slot: BinderSlot | undefined
 }) {
   const droppableId = `${DROPPABLE_PREFIX}${positionKey(page, face, row, col)}`
-  const isOccupied = !!slot?.ownedCard
-
-  const { setNodeRef, isOver } = useDroppable({ id: droppableId, disabled: isOccupied })
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: droppableId,
+    disabled: !!slot?.ownedCard,
+  })
 
   if (!slot?.ownedCard) {
     return (
       <div
-        ref={setNodeRef}
+        ref={setDroppableRef}
         role="img"
         aria-label={`Slot vide ligne ${row} colonne ${col}`}
         className={`flex aspect-[5/7] items-center justify-center rounded-md border-2 border-dashed text-xs transition ${
@@ -388,16 +439,29 @@ function SlotCell({
     )
   }
 
-  const { card } = slot.ownedCard
-  const tooltip = `${card.name} — ${card.setId} #${card.numberInSet} (${slot.ownedCard.condition})`
+  return <OccupiedSlotCell ownedCard={slot.ownedCard} />
+}
+
+function OccupiedSlotCell({ ownedCard }: { ownedCard: NonNullable<BinderSlot['ownedCard']> }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `${DRAGGABLE_SLOT}${ownedCard.id}`,
+  })
+
+  const { card } = ownedCard
+  const tooltip = `${card.name} — ${card.setId} #${card.numberInSet} (${ownedCard.condition})`
 
   return (
     <Link
+      ref={setNodeRef}
       to="/collection/cards/$cardId"
       params={{ cardId: card.id }}
       title={tooltip}
       aria-label={tooltip}
-      className="group relative block aspect-[5/7] overflow-hidden rounded-md border bg-muted shadow-sm transition hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary"
+      {...listeners}
+      {...attributes}
+      className={`group relative block aspect-[5/7] cursor-grab overflow-hidden rounded-md border bg-muted shadow-sm transition focus-visible:outline-2 focus-visible:outline-primary active:cursor-grabbing ${
+        isDragging ? 'opacity-30' : 'hover:shadow-md'
+      }`}
     >
       {card.imageUrl ? (
         <img
@@ -405,6 +469,7 @@ function SlotCell({
           alt={card.name}
           className="size-full object-cover"
           loading="lazy"
+          draggable={false}
         />
       ) : (
         <div className="flex size-full items-center justify-center text-center text-muted-foreground text-xs">
@@ -465,7 +530,7 @@ function FreeCardsPanel({
 
 function FreeCardItem({ ownedCard }: { ownedCard: OwnedCard }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `${DRAGGABLE_PREFIX}${ownedCard.id}`,
+    id: `${DRAGGABLE_FREE}${ownedCard.id}`,
   })
 
   const tooltip = `${ownedCard.card.name} — ${ownedCard.card.setId} #${ownedCard.card.numberInSet} (${ownedCard.condition})`
@@ -497,19 +562,26 @@ function FreeCardItem({ ownedCard }: { ownedCard: OwnedCard }) {
   )
 }
 
-function DragPreview({ card }: { card: OwnedCard | undefined }) {
+function DragPreview({
+  ownedCard,
+  placed,
+}: {
+  ownedCard: OwnedCard | undefined
+  placed: NonNullable<BinderSlot['ownedCard']> | undefined
+}) {
+  const card = ownedCard?.card ?? placed?.card
   if (!card) return null
   return (
     <div className="aspect-[5/7] w-24 overflow-hidden rounded-md border bg-muted shadow-lg ring-2 ring-primary">
-      {card.card.imageUrl ? (
+      {card.imageUrl ? (
         <img
-          src={tcgdexImageUrl(card.card.imageUrl, 'low')}
-          alt={card.card.name}
+          src={tcgdexImageUrl(card.imageUrl, 'low')}
+          alt={card.name}
           className="size-full object-cover"
         />
       ) : (
         <div className="flex size-full items-center justify-center text-center text-muted-foreground text-xs">
-          {card.card.name}
+          {card.name}
         </div>
       )}
     </div>
