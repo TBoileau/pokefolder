@@ -53,6 +53,18 @@ final class SDKTCGdexProvider implements TCGdexProvider
         return new TCGdexSet(id: $set->id, cards: $cards);
     }
 
+    public function listSetIds(string $language): array
+    {
+        $this->tcgdex->lang = $language;
+
+        $ids = [];
+        foreach ($this->tcgdex->set->list() as $resume) {
+            $ids[] = $resume->id;
+        }
+
+        return $ids;
+    }
+
     /**
      * @return list<string>
      */

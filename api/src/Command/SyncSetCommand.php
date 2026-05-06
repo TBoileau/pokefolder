@@ -15,7 +15,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsCommand(
     name: 'pokefolder:sync-set',
-    description: 'Dispatch a SyncSetMessage to the async queue for the given TCGdex set.',
+    description: 'Dispatch a targeted TCGdex catalog sync for one set on the async queue.',
 )]
 final class SyncSetCommand extends Command
 {

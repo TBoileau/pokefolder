@@ -6,6 +6,7 @@ framework:
 
         routing:
             App\UseCase\Catalog\SyncSet\Input: async
+            App\UseCase\Catalog\SyncAll\Input: async
 
 when@test:
     framework:
