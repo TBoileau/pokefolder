@@ -16,7 +16,7 @@ use Symfony\Component\Uid\Uuid;
  * Catalogue entry mirroring a Pokémon TCG card from TCGdex. Read-only from
  * the application's perspective: only updated by the catalogue synchroniser.
  *
- * Functional identity: (set, numberInSet, variant, language). See CONTEXT.md.
+ * Functional identity: (setId, numberInSet, variant, language). See CONTEXT.md.
  */
 #[ORM\Entity(repositoryClass: CardRepository::class)]
 #[ORM\Table(name: 'card')]
@@ -38,7 +38,7 @@ class Card
     private Uuid $id;
 
     #[ORM\Column(name: 'set_id', length: 64)]
-    private string $set;
+    private string $setId;
 
     #[ORM\Column(length: 32)]
     private string $numberInSet;
@@ -65,7 +65,7 @@ class Card
     private \DateTimeImmutable $updatedAt;
 
     public function __construct(
-        string $set,
+        string $setId,
         string $numberInSet,
         string $variant,
         string $language,
@@ -75,7 +75,7 @@ class Card
         ?Uuid $id = null,
     ) {
         $this->id = $id ?? Uuid::v7();
-        $this->set = $set;
+        $this->setId = $setId;
         $this->numberInSet = $numberInSet;
         $this->variant = $variant;
         $this->language = $language;
@@ -95,7 +95,7 @@ class Card
 
     /**
      * Propagates upstream catalogue changes onto this row. Functional
-     * identity (set, numberInSet, variant, language) is intentionally
+     * identity (setId, numberInSet, variant, language) is intentionally
      * immutable — only descriptive fields can drift.
      *
      * Returns true if any field actually changed.
@@ -124,9 +124,9 @@ class Card
         return $this->id;
     }
 
-    public function getSet(): string
+    public function getSetId(): string
     {
-        return $this->set;
+        return $this->setId;
     }
 
     public function getNumberInSet(): string

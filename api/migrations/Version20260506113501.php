@@ -11,7 +11,7 @@ final class Version20260506113501 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Create card table (catalogue mirror of TCGdex), with unique index on (set, numberInSet, variant, language).';
+        return 'Create card table (catalog mirror of TCGdex), with unique index on (setId, numberInSet, variant, language).';
     }
 
     public function up(Schema $schema): void

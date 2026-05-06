@@ -8,17 +8,17 @@ This document defines **what things are** and **how they relate**. Architectural
 
 ## Card
 
-A reference entry from the Pokémon TCG catalogue, sourced from [TCGdex](https://tcgdex.dev). A `Card` is **catalogue data**, not a physical object you own — it is the description of a card that exists in the world.
+A reference entry from the Pokémon TCG catalog, sourced from [TCGdex](https://tcgdex.dev). A `Card` is **catalog data**, not a physical object you own — it is the description of a card that exists in the world.
 
-**Functional identity** (uniqueness key): the tuple `(set, numberInSet, variant, language)`. Two `Card` rows are the same card iff all four match.
+**Functional identity** (uniqueness key): the tuple `(setId, numberInSet, variant, language)`. Two `Card` rows are the same card iff all four match.
 
 **Properties**:
 
-- `set` — the TCGdex set identifier (e.g. `swsh1`, `base1`)
+- `setId` — the TCGdex set identifier (e.g. `swsh1`, `base1`)
 - `numberInSet` — the printed number within the set (e.g. `4` for Charizard in Base Set)
 - `variant` — the variant identifier (e.g. `holo`, `reverse`, `full-art`, `1st-edition`, `promo`); a "variant" here is whatever TCGdex models as a distinct printing
 - `language` — ISO language code (`fr`, `en`, `ja`, `de`, `it`, `es`, …)
-- `name`, `rarity`, `imageUrl`, plus other catalogue metadata mirrored from TCGdex
+- `name`, `rarity`, `imageUrl`, plus other catalog metadata mirrored from TCGdex
 
 **Mutability**: `Card` is read-only from the application's perspective. It only changes when a sync from TCGdex updates it.
 
@@ -105,19 +105,19 @@ These invariants are enforced by the `BinderPlacementService` (see PRD #1, slice
 
 ## Set
 
-A Pokémon TCG set (e.g. "Base Set", "Sword & Shield", "Scarlet & Violet"). Used as a foreign concept (`Card.set` references a TCGdex set ID). Sets themselves are not modelled as a first-class entity in the local schema — the catalogue lives in TCGdex.
+A Pokémon TCG set (e.g. "Base Set", "Sword & Shield", "Scarlet & Violet"). Used as a foreign concept (`Card.setId` references a TCGdex set ID). Sets themselves are not modelled as a first-class entity in the local schema — the catalog lives in TCGdex.
 
 ---
 
-## Catalogue synchronisation
+## Catalog synchronization
 
-The act of pulling Pokémon TCG data from TCGdex into the local database, mapping it to local `Card` rows. Synchronisation is:
+The act of pulling Pokémon TCG data from TCGdex into the local database, mapping it to local `Card` rows. Synchronization is:
 
 - **Manual**: triggered by the user (CLI command or UI action), never automatic
 - **Asynchronous**: dispatched per set onto a RabbitMQ queue, processed by a worker (see [ADR-0001](docs/adr/0001-rabbitmq-over-doctrine-transport.md))
 - **Idempotent**: re-syncing a set updates existing `Card` rows in place, never duplicates
 
-The synchronisation is one-way: TCGdex → local DB. The app never writes back to TCGdex.
+The synchronization is one-way: TCGdex → local DB. The app never writes back to TCGdex.
 
 ---
 
