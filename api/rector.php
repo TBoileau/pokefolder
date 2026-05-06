@@ -31,12 +31,28 @@ return RectorConfig::configure()
     ])
     // Doctrine entities carry the idiomatic `$id` property regardless of its
     // PHP type — Rector's name-matching would rename it to `$uuid` and break
-    // the column mapping (column name stays `id`).
+    // the column mapping (column name stays `id`). The same naming preference
+    // applies to placement code where short domain names like `$position`
+    // and `$lookup` read better than the verbose type-matched alternatives.
     ->withSkip([
         RenamePropertyToMatchTypeRector::class => [
             __DIR__ . '/src/Entity',
+            __DIR__ . '/src/Service/Binder',
+            __DIR__ . '/src/UseCase/Binder',
+            __DIR__ . '/tests',
         ],
         RenameParamToMatchTypeRector::class => [
             __DIR__ . '/src/Entity',
+            __DIR__ . '/src/Repository',
+            __DIR__ . '/src/Service/Binder',
+            __DIR__ . '/src/UseCase/Binder',
+            __DIR__ . '/tests',
+        ],
+        \Rector\Naming\Rector\ClassMethod\RenameVariableToMatchNewTypeRector::class => [
+            __DIR__ . '/src/UseCase/Binder',
+            __DIR__ . '/tests',
+        ],
+        \Rector\Naming\Rector\Assign\RenameVariableToMatchMethodCallReturnTypeRector::class => [
+            __DIR__ . '/tests',
         ],
     ]);

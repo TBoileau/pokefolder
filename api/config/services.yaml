@@ -23,6 +23,9 @@ services:
     # Bind the TCGdex catalog provider to the SDK-backed implementation.
     App\Service\Catalog\Provider\TCGdexProvider: '@App\Service\Catalog\Provider\SDKTCGdexProvider'
 
+    # The BinderSlotRepository implements the lookup interface used by the placement service.
+    App\Service\Binder\BinderSlotLookupInterface: '@App\Repository\BinderSlotRepository'
+
     # TCGdex SDK client built by our factory (so we control its PSR slots).
     TCGdex\TCGdex:
         factory: ['@App\Service\Catalog\Provider\TCGdexClientFactory', 'create']
