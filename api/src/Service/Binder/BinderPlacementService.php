@@ -76,6 +76,46 @@ final readonly class BinderPlacementService
         return $slot;
     }
 
+    /**
+     * Moves $ownedCard to ($binder, $position). If the OwnedCard was not
+     * placed, behaves like place(). The PlacementMoveResult tells the
+     * caller which slot (if any) to delete and which slot to persist —
+     * atomicity is the caller's responsibility (Doctrine transaction).
+     *
+     * @throws PositionOutOfBoundsException
+     * @throws SlotAlreadyOccupiedException
+     */
+    public function move(OwnedCard $ownedCard, Binder $binder, BinderSlotPosition $position): PlacementMoveResult
+    {
+        $this->assertWithinBounds($binder, $position);
+
+        $previousSlot = $this->lookup->findByOwnedCard($ownedCard);
+
+        if ($previousSlot instanceof BinderSlot
+            && $previousSlot->getBinder() === $binder
+            && $previousSlot->getPosition()->equals($position)
+        ) {
+            return new PlacementMoveResult(previousSlot: null, newSlot: $previousSlot);
+        }
+
+        $existingAtPosition = $this->lookup->findByPosition($binder, $position);
+        if ($existingAtPosition instanceof BinderSlot
+            && $existingAtPosition->getOwnedCard() instanceof OwnedCard
+            && $existingAtPosition !== $previousSlot
+        ) {
+            throw new SlotAlreadyOccupiedException($binder, $position);
+        }
+
+        if ($existingAtPosition instanceof BinderSlot) {
+            $existingAtPosition->setOwnedCard($ownedCard);
+            $newSlot = $existingAtPosition;
+        } else {
+            $newSlot = new BinderSlot($binder, $position, $ownedCard);
+        }
+
+        return new PlacementMoveResult(previousSlot: $previousSlot, newSlot: $newSlot);
+    }
+
     private function assertWithinBounds(Binder $binder, BinderSlotPosition $position): void
     {
         if ($position->pageNumber < 1 || $position->pageNumber > $binder->getPageCount()) {
