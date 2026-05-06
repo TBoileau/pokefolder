@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\SerieRepository;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * Top-level grouping of TCGdex sets (e.g. "Sword & Shield", "Base").
@@ -16,24 +22,36 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: SerieRepository::class)]
 #[ORM\Table(name: 'serie')]
+#[ApiResource(
+    operations: [new GetCollection(), new Get()],
+    normalizationContext: ['groups' => ['serie:read']],
+    order: ['releaseDate' => 'DESC'],
+    paginationItemsPerPage: 100,
+)]
+#[ApiFilter(OrderFilter::class, properties: ['releaseDate', 'id'])]
 class Serie
 {
+    #[Groups(['serie:read', 'set:read', 'card:read'])]
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $logo = null;
 
+    #[Groups(['serie:read', 'set:read'])]
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $releaseDate = null;
 
     /**
      * @var Collection<int, SerieTranslation>
      */
+    #[Groups(['serie:read', 'set:read', 'card:read'])]
     #[ORM\OneToMany(targetEntity: SerieTranslation::class, mappedBy: 'serie', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $translations;
 
-    public function __construct(#[ORM\Id]
+    public function __construct(
+        #[Groups(['serie:read', 'set:read', 'card:read'])]
+        #[ORM\Id]
         #[ORM\Column(length: 64)]
-        private string $id)
-    {
+        private string $id,
+    ) {
         $this->translations = new ArrayCollection();
     }
 

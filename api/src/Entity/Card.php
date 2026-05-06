@@ -35,6 +35,7 @@ use Symfony\Component\Uid\Uuid;
         new GetCollection(),
         new Get(),
     ],
+    normalizationContext: ['groups' => ['card:read']],
     order: ['numberInSet' => 'ASC'],
 )]
 #[ApiFilter(SearchFilter::class, properties: [

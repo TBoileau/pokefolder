@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
@@ -21,12 +22,16 @@ class PokemonSetTranslation
         #[ORM\ManyToOne(targetEntity: PokemonSet::class, inversedBy: 'translations')]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
         private PokemonSet $pokemonSet,
+        #[Groups(['set:read', 'card:read'])]
         #[ORM\Column(length: 8)]
         private string $language,
+        #[Groups(['set:read', 'card:read'])]
         #[ORM\Column(length: 255)]
         private string $name,
+        #[Groups(['set:read'])]
         #[ORM\Column(length: 32, nullable: true)]
         private ?string $abbreviationOfficial = null,
+        #[Groups(['set:read'])]
         #[ORM\Column(length: 32, nullable: true)]
         private ?string $abbreviationNormal = null,
     ) {
