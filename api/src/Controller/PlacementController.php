@@ -8,12 +8,15 @@ use App\Enum\BinderSlotFace;
 use App\Exception\Binder\BinderNotFoundException;
 use App\Exception\Binder\OwnedCardAlreadyPlacedException;
 use App\Exception\Binder\OwnedCardNotFoundException;
+use App\Exception\Binder\OwnedCardNotPlacedException;
 use App\Exception\Binder\PositionOutOfBoundsException;
 use App\Exception\Binder\SlotAlreadyOccupiedException;
 use App\UseCase\Binder\PlaceCard\Handler as PlaceCardHandler;
 use App\UseCase\Binder\PlaceCard\Input as PlaceCardInput;
 use App\UseCase\Binder\SuggestPlacement\Handler as SuggestPlacementHandler;
 use App\UseCase\Binder\SuggestPlacement\Input as SuggestPlacementInput;
+use App\UseCase\Binder\UnplaceCard\Handler as UnplaceCardHandler;
+use App\UseCase\Binder\UnplaceCard\Input as UnplaceCardInput;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,7 +36,27 @@ final readonly class PlacementController
     public function __construct(
         private PlaceCardHandler $placeCardHandler,
         private SuggestPlacementHandler $suggestPlacementHandler,
+        private UnplaceCardHandler $unplaceCardHandler,
     ) {
+    }
+
+    #[Route(
+        path: '/api/owned-cards/{id}/unplace',
+        name: 'app_owned_card_unplace',
+        requirements: ['id' => '[0-9a-fA-F-]{36}'],
+        methods: ['POST'],
+    )]
+    public function unplace(string $id): JsonResponse
+    {
+        try {
+            ($this->unplaceCardHandler)(new UnplaceCardInput($id));
+        } catch (OwnedCardNotFoundException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], Response::HTTP_NOT_FOUND);
+        } catch (OwnedCardNotPlacedException $exception) {
+            return new JsonResponse(['error' => $exception->getMessage()], Response::HTTP_CONFLICT);
+        }
+
+        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
     #[Route(

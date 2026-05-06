@@ -53,6 +53,7 @@ return RectorConfig::configure()
             __DIR__ . '/tests',
         ],
         \Rector\Naming\Rector\Assign\RenameVariableToMatchMethodCallReturnTypeRector::class => [
+            __DIR__ . '/src/UseCase/Binder',
             __DIR__ . '/tests',
         ],
     ]);
