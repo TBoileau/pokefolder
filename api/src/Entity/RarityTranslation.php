@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
@@ -21,8 +22,10 @@ class RarityTranslation
         #[ORM\ManyToOne(targetEntity: Rarity::class, inversedBy: 'translations')]
         #[ORM\JoinColumn(name: 'rarity_code', referencedColumnName: 'code', nullable: false, onDelete: 'CASCADE')]
         private Rarity $rarity,
+        #[Groups(['rarity:read', 'card:read'])]
         #[ORM\Column(length: 8)]
         private string $language,
+        #[Groups(['rarity:read', 'card:read'])]
         #[ORM\Column(length: 255)]
         private string $name,
     ) {

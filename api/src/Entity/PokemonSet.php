@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\PokemonSetRepository;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * A TCGdex set (e.g. "Base Set", "Sword & Shield Base").
@@ -17,44 +24,65 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: PokemonSetRepository::class)]
 #[ORM\Table(name: 'pokemon_set')]
+#[ApiResource(
+    operations: [new GetCollection(), new Get()],
+    normalizationContext: ['groups' => ['set:read']],
+    order: ['releaseDate' => 'DESC'],
+    paginationItemsPerPage: 200,
+)]
+#[ApiFilter(SearchFilter::class, properties: ['serie' => 'exact'])]
+#[ApiFilter(OrderFilter::class, properties: ['releaseDate', 'id'])]
 class PokemonSet
 {
+    #[Groups(['set:read', 'card:read'])]
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $logo = null;
 
+    #[Groups(['set:read', 'card:read'])]
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $symbol = null;
 
+    #[Groups(['set:read'])]
     #[ORM\Column(nullable: true)]
     private ?DateTimeImmutable $releaseDate = null;
 
+    #[Groups(['set:read'])]
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true)]
     private ?int $cardCountTotal = null;
 
+    #[Groups(['set:read'])]
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::INTEGER, nullable: true)]
     private ?int $cardCountOfficial = null;
 
+    #[Groups(['set:read'])]
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
     private ?bool $legalStandard = null;
 
+    #[Groups(['set:read'])]
     #[ORM\Column(type: \Doctrine\DBAL\Types\Types::BOOLEAN, nullable: true)]
     private ?bool $legalExpanded = null;
 
+    #[Groups(['set:read'])]
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $tcgOnlineId = null;
 
     /**
      * @var Collection<int, PokemonSetTranslation>
      */
+    #[Groups(['set:read', 'card:read'])]
     #[ORM\OneToMany(targetEntity: PokemonSetTranslation::class, mappedBy: 'pokemonSet', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $translations;
 
-    public function __construct(#[ORM\Id]
+    public function __construct(
+        #[Groups(['set:read', 'card:read'])]
+        #[ORM\Id]
         #[ORM\Column(length: 64)]
-        private string $id, #[ORM\ManyToOne(targetEntity: Serie::class)]
+        private string $id,
+        #[Groups(['set:read'])]
+        #[ORM\ManyToOne(targetEntity: Serie::class)]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-        private Serie $serie)
-    {
+        private Serie $serie,
+    ) {
         $this->translations = new ArrayCollection();
     }
 

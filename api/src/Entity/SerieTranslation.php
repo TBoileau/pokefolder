@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
+use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
@@ -21,8 +22,10 @@ class SerieTranslation
         #[ORM\ManyToOne(targetEntity: Serie::class, inversedBy: 'translations')]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
         private Serie $serie,
+        #[Groups(['serie:read', 'set:read', 'card:read'])]
         #[ORM\Column(length: 8)]
         private string $language,
+        #[Groups(['serie:read', 'set:read', 'card:read'])]
         #[ORM\Column(length: 255)]
         private string $name,
     ) {

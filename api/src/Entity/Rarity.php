@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\RarityRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * Card rarity, deduplicated by a stable slug across languages.
@@ -15,18 +21,27 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: RarityRepository::class)]
 #[ORM\Table(name: 'rarity')]
+#[ApiResource(
+    operations: [new GetCollection(), new Get()],
+    normalizationContext: ['groups' => ['rarity:read']],
+    paginationItemsPerPage: 200,
+)]
+#[ApiFilter(OrderFilter::class, properties: ['code'])]
 class Rarity
 {
     /**
      * @var Collection<int, RarityTranslation>
      */
+    #[Groups(['rarity:read', 'card:read'])]
     #[ORM\OneToMany(targetEntity: RarityTranslation::class, mappedBy: 'rarity', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $translations;
 
-    public function __construct(#[ORM\Id]
+    public function __construct(
+        #[Groups(['rarity:read', 'card:read'])]
+        #[ORM\Id]
         #[ORM\Column(length: 64)]
-        private string $code)
-    {
+        private string $code,
+    ) {
         $this->translations = new ArrayCollection();
     }
 
