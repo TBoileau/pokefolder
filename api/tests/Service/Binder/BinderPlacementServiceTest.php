@@ -170,6 +170,118 @@ final class BinderPlacementServiceTest extends TestCase
         $this->service->remove($this->makeOwnedCard());
     }
 
+    public function testMoveBehavesLikePlaceWhenOwnedCardWasNotPlacedYet(): void
+    {
+        $binder = $this->makeBinder();
+        $ownedCard = $this->makeOwnedCard();
+
+        $result = $this->service->move(
+            $ownedCard,
+            $binder,
+            new BinderSlotPosition(1, BinderSlotFace::Recto, 1, 1),
+        );
+
+        self::assertNull($result->previousSlot);
+        self::assertSame($ownedCard, $result->newSlot->getOwnedCard());
+    }
+
+    public function testMoveDetachesPreviousSlotAndReturnsItForRemoval(): void
+    {
+        $binder = $this->makeBinder();
+        $ownedCard = $this->makeOwnedCard();
+        $oldSlot = new BinderSlot(
+            $binder,
+            new BinderSlotPosition(1, BinderSlotFace::Recto, 1, 1),
+            $ownedCard,
+        );
+        $this->lookup->add($oldSlot);
+
+        $result = $this->service->move(
+            $ownedCard,
+            $binder,
+            new BinderSlotPosition(2, BinderSlotFace::Recto, 1, 1),
+        );
+
+        self::assertSame($oldSlot, $result->previousSlot);
+        self::assertNotSame($oldSlot, $result->newSlot);
+        self::assertSame(2, $result->newSlot->getPageNumber());
+        self::assertSame($ownedCard, $result->newSlot->getOwnedCard());
+    }
+
+    public function testMoveCanCrossBinders(): void
+    {
+        $sourceBinder = $this->makeBinder();
+        $destinationBinder = $this->makeBinder();
+        $ownedCard = $this->makeOwnedCard();
+        $oldSlot = new BinderSlot(
+            $sourceBinder,
+            new BinderSlotPosition(1, BinderSlotFace::Recto, 1, 1),
+            $ownedCard,
+        );
+        $this->lookup->add($oldSlot);
+
+        $result = $this->service->move(
+            $ownedCard,
+            $destinationBinder,
+            new BinderSlotPosition(1, BinderSlotFace::Recto, 1, 1),
+        );
+
+        self::assertSame($oldSlot, $result->previousSlot);
+        self::assertSame($destinationBinder, $result->newSlot->getBinder());
+    }
+
+    public function testMoveIsANoOpWhenTargetMatchesPreviousPosition(): void
+    {
+        $binder = $this->makeBinder();
+        $ownedCard = $this->makeOwnedCard();
+        $position = new BinderSlotPosition(1, BinderSlotFace::Recto, 1, 1);
+        $slot = new BinderSlot($binder, $position, $ownedCard);
+        $this->lookup->add($slot);
+
+        $result = $this->service->move($ownedCard, $binder, $position);
+
+        self::assertNull($result->previousSlot);
+        self::assertSame($slot, $result->newSlot);
+    }
+
+    public function testMoveRejectsTargetSlotOccupiedByAnotherOwnedCard(): void
+    {
+        $binder = $this->makeBinder();
+        $occupied = new BinderSlot(
+            $binder,
+            new BinderSlotPosition(2, BinderSlotFace::Recto, 1, 1),
+            $this->makeOwnedCard(),
+        );
+        $movingCard = $this->makeOwnedCard();
+        $oldSlot = new BinderSlot(
+            $binder,
+            new BinderSlotPosition(1, BinderSlotFace::Recto, 1, 1),
+            $movingCard,
+        );
+        $this->lookup->add($occupied);
+        $this->lookup->add($oldSlot);
+
+        $this->expectException(SlotAlreadyOccupiedException::class);
+        $this->service->move(
+            $movingCard,
+            $binder,
+            new BinderSlotPosition(2, BinderSlotFace::Recto, 1, 1),
+        );
+    }
+
+    public function testMoveEnforcesBoundsLikePlace(): void
+    {
+        $binder = $this->makeBinder(pageCount: 2);
+        $ownedCard = $this->makeOwnedCard();
+
+        $this->expectException(PositionOutOfBoundsException::class);
+        $this->service->move(
+            $ownedCard,
+            $binder,
+            new BinderSlotPosition(99, BinderSlotFace::Recto, 1, 1),
+        );
+    }
+
     public function testAcceptsVersoOnDoubleSidedBinder(): void
     {
         $binder = $this->makeBinder(doubleSided: true);

@@ -1,0 +1,21 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCase\Binder\MoveCard;
+
+use App\Enum\BinderSlotFace;
+
+final readonly class Output
+{
+    public function __construct(
+        public string $slotId,
+        public string $binderId,
+        public string $ownedCardId,
+        public int $pageNumber,
+        public BinderSlotFace $face,
+        public int $row,
+        public int $col,
+    ) {
+    }
+}
