@@ -8,18 +8,16 @@ export function HomePage() {
       <header className="border-b">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-4">
           <Library className="size-6 text-primary" />
-          <h1 className="text-lg font-semibold tracking-tight">pokefolder</h1>
+          <h1 className="font-semibold text-lg tracking-tight">pokefolder</h1>
         </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-6 py-12">
         <div className="space-y-2">
-          <h2 className="text-3xl font-semibold tracking-tight">
-            Bienvenue dans pokefolder
-          </h2>
+          <h2 className="font-semibold text-3xl tracking-tight">Bienvenue dans pokefolder</h2>
           <p className="text-muted-foreground">
-            Gestionnaire de collection Pokémon TCG. Le squelette est branché —
-            les fonctionnalités arriveront slice par slice.
+            Gestionnaire de collection Pokémon TCG. Le squelette est branché — les fonctionnalités
+            arriveront slice par slice.
           </p>
         </div>
 
