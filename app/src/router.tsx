@@ -2,6 +2,7 @@ import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/re
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { z } from 'zod'
 
+import { BinderCreatePage } from '@/pages/BinderCreatePage'
 import { BindersPage } from '@/pages/BindersPage'
 import { CardsPage } from '@/pages/CardsPage'
 import { CollectionAddPage } from '@/pages/CollectionAddPage'
@@ -88,6 +89,12 @@ const bindersRoute = createRoute({
   component: BindersPage,
 })
 
+const binderCreateRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/binders/new',
+  component: BinderCreatePage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   cardsRoute,
@@ -96,6 +103,7 @@ const routeTree = rootRoute.addChildren([
   collectionCardRoute,
   collectionAddRoute,
   bindersRoute,
+  binderCreateRoute,
 ])
 
 export const router = createRouter({ routeTree })
