@@ -11,6 +11,7 @@ use App\Entity\OwnedCard;
 use App\Enum\BinderSlotFace;
 use App\Enum\Condition;
 use App\Exception\Binder\OwnedCardAlreadyPlacedException;
+use App\Exception\Binder\OwnedCardNotPlacedException;
 use App\Exception\Binder\PositionOutOfBoundsException;
 use App\Exception\Binder\SlotAlreadyOccupiedException;
 use App\Service\Binder\BinderPlacementService;
@@ -145,6 +146,28 @@ final class BinderPlacementServiceTest extends TestCase
             $binder,
             new BinderSlotPosition(1, BinderSlotFace::Verso, 1, 1),
         );
+    }
+
+    public function testRemoveReturnsTheSlotOccupiedByTheOwnedCard(): void
+    {
+        $binder = $this->makeBinder();
+        $ownedCard = $this->makeOwnedCard();
+        $slot = new BinderSlot(
+            $binder,
+            new BinderSlotPosition(1, BinderSlotFace::Recto, 1, 1),
+            $ownedCard,
+        );
+        $this->lookup->add($slot);
+
+        $removed = $this->service->remove($ownedCard);
+
+        self::assertSame($slot, $removed);
+    }
+
+    public function testRemoveRejectsAnOwnedCardThatIsNotPlacedAnywhere(): void
+    {
+        $this->expectException(OwnedCardNotPlacedException::class);
+        $this->service->remove($this->makeOwnedCard());
     }
 
     public function testAcceptsVersoOnDoubleSidedBinder(): void

@@ -9,6 +9,7 @@ use App\Entity\BinderSlot;
 use App\Entity\OwnedCard;
 use App\Enum\BinderSlotFace;
 use App\Exception\Binder\OwnedCardAlreadyPlacedException;
+use App\Exception\Binder\OwnedCardNotPlacedException;
 use App\Exception\Binder\PositionOutOfBoundsException;
 use App\Exception\Binder\SlotAlreadyOccupiedException;
 
@@ -56,6 +57,23 @@ final readonly class BinderPlacementService
         }
 
         return new BinderSlot($binder, $position, $ownedCard);
+    }
+
+    /**
+     * Frees the slot occupied by $ownedCard. Returns the slot the caller
+     * is expected to remove from the EntityManager. The OwnedCard itself
+     * stays in the collection — only the binder placement is undone.
+     *
+     * @throws OwnedCardNotPlacedException
+     */
+    public function remove(OwnedCard $ownedCard): BinderSlot
+    {
+        $slot = $this->lookup->findByOwnedCard($ownedCard);
+        if (!$slot instanceof BinderSlot) {
+            throw new OwnedCardNotPlacedException($ownedCard);
+        }
+
+        return $slot;
     }
 
     private function assertWithinBounds(Binder $binder, BinderSlotPosition $position): void
