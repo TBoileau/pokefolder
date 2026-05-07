@@ -70,10 +70,12 @@ final class CatalogResourcesTest extends ApiTestCase
 
         $serie = new Serie('me');
         $serie->upsertTranslation('en', 'Mega Evolution');
+
         $em->persist($serie);
 
         $set = new PokemonSet('me02.5', $serie);
         $set->upsertTranslation('en', 'Mega Evolution Promos');
+
         $em->persist($set);
         $em->flush();
 
