@@ -27,10 +27,17 @@ export function usePokemonSetsQuery(serieId: string | undefined) {
   })
 }
 
-export function useRaritiesQuery() {
+export function useRaritiesQuery(serieId?: string, setId?: string) {
+  const params = new URLSearchParams()
+  params.set('itemsPerPage', '200')
+  if (setId) {
+    params.set('pokemonSet', `/api/pokemon_sets/${setId}`)
+  } else if (serieId) {
+    params.set('serie', `/api/series/${serieId}`)
+  }
   return useQuery({
-    queryKey: ['catalog', 'rarities'],
-    queryFn: () => fetcher<HydraCollection<Rarity>>('/api/rarities?itemsPerPage=200'),
+    queryKey: ['catalog', 'rarities', serieId ?? null, setId ?? null],
+    queryFn: () => fetcher<HydraCollection<Rarity>>(`/api/rarities?${params.toString()}`),
   })
 }
 

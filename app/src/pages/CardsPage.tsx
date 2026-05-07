@@ -41,7 +41,7 @@ export function CardsPage() {
 
   const seriesQuery = useSeriesQuery()
   const setsQuery = usePokemonSetsQuery(search.serie)
-  const raritiesQuery = useRaritiesQuery()
+  const raritiesQuery = useRaritiesQuery(search.serie, search.set)
   const variantsQuery = useVariantsQuery()
   const languagesQuery = useLanguagesQuery()
 
@@ -57,6 +57,22 @@ export function CardsPage() {
     }, 300)
     return () => window.clearTimeout(id)
   }, [searchInput, search.q, navigate])
+
+  // When the available rarity list shrinks (serie/set change), drop any
+  // selected rarity that is no longer in scope so the cards query doesn't
+  // silently filter to nothing.
+  const availableRarities = raritiesQuery.data?.member
+  useEffect(() => {
+    if (!availableRarities) return
+    const selected = search.rarities ?? []
+    if (selected.length === 0) return
+    const allowed = new Set(availableRarities.map((r) => r.code))
+    const next = selected.filter((c) => allowed.has(c))
+    if (next.length === selected.length) return
+    void navigate({
+      search: (prev) => ({ ...prev, rarities: next.length === 0 ? undefined : next }),
+    })
+  }, [availableRarities, search.rarities, navigate])
 
   const filtersComplete = !!search.serie && !!search.set
   const filters: CardFilters = {
