@@ -25,7 +25,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Entity(repositoryClass: PokemonSetRepository::class)]
 #[ORM\Table(name: 'pokemon_set')]
 #[ApiResource(
-    operations: [new GetCollection(), new Get()],
+    operations: [
+        new GetCollection(),
+        new Get(requirements: ['id' => '[A-Za-z0-9._-]+']),
+    ],
     normalizationContext: ['groups' => ['set:read']],
     order: ['releaseDate' => 'DESC'],
     paginationItemsPerPage: 200,
