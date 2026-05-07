@@ -63,6 +63,29 @@ final class CatalogResourcesTest extends ApiTestCase
         self::assertJsonContains(['totalItems' => 1]);
     }
 
+    public function testGetSetsCollectionSerializesIdsContainingDots(): void
+    {
+        $client = self::createClient();
+        $em = self::getContainer()->get(EntityManagerInterface::class);
+
+        $serie = new Serie('me');
+        $serie->upsertTranslation('en', 'Mega Evolution');
+        $em->persist($serie);
+
+        $set = new PokemonSet('me02.5', $serie);
+        $set->upsertTranslation('en', 'Mega Evolution Promos');
+        $em->persist($set);
+        $em->flush();
+
+        $client->request('GET', '/api/pokemon_sets?serie=/api/series/me');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertJsonContains([
+            'totalItems' => 1,
+            'member' => [['@id' => '/api/pokemon_sets/me02.5', 'id' => 'me02.5']],
+        ]);
+    }
+
     public function testGetRarities(): void
     {
         $client = self::createClient();
