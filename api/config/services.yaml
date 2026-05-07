@@ -39,6 +39,12 @@ services:
         tags:
             - { name: 'api_platform.doctrine.orm.query_extension.collection' }
 
+    # Custom collection extension: scopes /api/rarities to those used by
+    # cards in the requested ?pokemonSet={iri} or ?serie={iri}.
+    App\Api\Doctrine\RarityCardScopeExtension:
+        tags:
+            - { name: 'api_platform.doctrine.orm.query_extension.collection' }
+
     # TCGdex SDK client built by our factory (so we control its PSR slots).
     TCGdex\TCGdex:
         factory: ['@App\Service\Catalog\Provider\TCGdexClientFactory', 'create']
