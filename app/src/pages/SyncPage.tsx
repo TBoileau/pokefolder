@@ -101,7 +101,7 @@ export function SyncPage() {
 
       <p className="text-muted-foreground text-xs">
         Une fois le worker démarré, le résultat se reflètera sur la page{' '}
-        <Link to="/cards" search={{ page: 1 }} className="underline">
+        <Link to="/cards" search={{}} className="underline">
           /cards
         </Link>
         .

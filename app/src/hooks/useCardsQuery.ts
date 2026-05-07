@@ -5,8 +5,6 @@ import type { HydraCollection } from '@/types/api'
 import type { Card } from '@/types/card'
 import type { Condition, OwnedCard } from '@/types/ownedCard'
 
-export const CARDS_PER_PAGE = 24
-
 export type CardFilters = {
   serieId?: string | undefined
   setId?: string | undefined
@@ -16,10 +14,8 @@ export type CardFilters = {
   search?: string | undefined
 }
 
-function buildSearch(page: number, filters: CardFilters): string {
+function buildSearch(filters: CardFilters): string {
   const params = new URLSearchParams()
-  params.set('page', String(page))
-  params.set('itemsPerPage', String(CARDS_PER_PAGE))
   if (filters.setId) {
     params.set('pokemonSet', `/api/pokemon_sets/${filters.setId}`)
   } else if (filters.serieId) {
@@ -40,8 +36,8 @@ function buildSearch(page: number, filters: CardFilters): string {
   return params.toString()
 }
 
-export function useCardsQuery(page: number, filters: CardFilters, enabled = true) {
-  const search = buildSearch(page, filters)
+export function useCardsQuery(filters: CardFilters, enabled = true) {
+  const search = buildSearch(filters)
   return useQuery({
     queryKey: ['cards', search],
     enabled,

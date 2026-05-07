@@ -31,7 +31,6 @@ const indexRoute = createRoute({
 })
 
 const cardsSearchSchema = z.object({
-  page: z.coerce.number().int().positive().catch(1),
   serie: z.string().optional().catch(undefined),
   set: z.string().optional().catch(undefined),
   language: z.string().optional().catch(undefined),
