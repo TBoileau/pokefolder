@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 use function sprintf;
+use function strlen;
 
 /**
  * Adds `?pokemonSet={iri}` and `?serie={iri}` filters on the Rarity
@@ -85,6 +86,6 @@ final readonly class RarityCardScopeExtension implements QueryCollectionExtensio
             return null;
         }
 
-        return str_starts_with($value, $prefix) ? substr($value, \strlen($prefix)) : $value;
+        return str_starts_with($value, $prefix) ? substr($value, strlen($prefix)) : $value;
     }
 }
