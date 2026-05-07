@@ -37,6 +37,7 @@ use Symfony\Component\Uid\Uuid;
     ],
     normalizationContext: ['groups' => ['card:read']],
     order: ['numberInSet' => 'ASC'],
+    paginationItemsPerPage: 1000,
 )]
 #[ApiFilter(SearchFilter::class, properties: [
     'pokemonSet' => 'exact',

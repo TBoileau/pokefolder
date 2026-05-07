@@ -1,5 +1,5 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { CheckSquare, ChevronLeft, ChevronRight, Loader2, Search, Square, X } from 'lucide-react'
+import { CheckSquare, Loader2, Search, Square, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  CARDS_PER_PAGE,
   type CardFilters,
   useAddOwnedCardMutation,
   useCardsQuery,
@@ -53,7 +52,7 @@ export function CardsPage() {
       const trimmed = searchInput.trim()
       if (trimmed === (search.q ?? '')) return
       void navigate({
-        search: (prev) => ({ ...prev, q: trimmed === '' ? undefined : trimmed, page: 1 }),
+        search: (prev) => ({ ...prev, q: trimmed === '' ? undefined : trimmed }),
       })
     }, 300)
     return () => window.clearTimeout(id)
@@ -69,11 +68,9 @@ export function CardsPage() {
     search: search.q,
   }
 
-  const cardsQuery = useCardsQuery(search.page, filters, filtersComplete)
+  const cardsQuery = useCardsQuery(filters, filtersComplete)
   const ownedQuery = useOwnedCardsBySetQuery(search.set, search.language)
 
-  const totalItems = cardsQuery.data?.totalItems ?? 0
-  const totalPages = Math.max(1, Math.ceil(totalItems / CARDS_PER_PAGE))
   const allCards = cardsQuery.data?.member ?? []
   const ownedCards = ownedQuery.data?.member ?? []
 
@@ -107,7 +104,7 @@ export function CardsPage() {
   }, [allCards, masterOn])
 
   const updateSearch = (next: Partial<typeof search>) => {
-    void navigate({ search: (prev) => ({ ...prev, ...next, page: next.page ?? 1 }) })
+    void navigate({ search: (prev) => ({ ...prev, ...next }) })
   }
 
   const [bulkMode, setBulkMode] = useState(false)
@@ -209,16 +206,6 @@ export function CardsPage() {
               }}
             />
           )}
-
-          {totalPages > 1 ? (
-            <PaginationBar
-              page={search.page}
-              totalPages={totalPages}
-              disabled={cardsQuery.isLoading}
-              onPrev={() => updateSearch({ page: Math.max(1, search.page - 1) })}
-              onNext={() => updateSearch({ page: Math.min(totalPages, search.page + 1) })}
-            />
-          ) : null}
         </>
       )}
     </main>
@@ -615,39 +602,6 @@ function CardsGridSkeleton() {
         </li>
       ))}
     </ul>
-  )
-}
-
-function PaginationBar({
-  page,
-  totalPages,
-  disabled,
-  onPrev,
-  onNext,
-}: {
-  page: number
-  totalPages: number
-  disabled: boolean
-  onPrev: () => void
-  onNext: () => void
-}) {
-  return (
-    <div className="flex items-center justify-center gap-2">
-      <Button variant="ghost" size="icon" onClick={onPrev} disabled={page <= 1 || disabled}>
-        <ChevronLeft />
-      </Button>
-      <span className="text-sm">
-        Page {page} / {totalPages}
-      </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onNext}
-        disabled={page >= totalPages || disabled}
-      >
-        <ChevronRight />
-      </Button>
-    </div>
   )
 }
 
